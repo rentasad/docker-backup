@@ -1,0 +1,67 @@
+# =========================
+# Secrets / sensitive data
+# =========================
+
+.env
+*.env
+restic-password.txt
+*.key
+*.pem
+*.secret
+*.token
+
+# =========================
+# Backup data (lokale Snapshots)
+# =========================
+
+/srv/backups/
+/backups/
+backups/
+
+# =========================
+# Restic temporary files
+# =========================
+
+.cache/
+restic-cache/
+*.lock
+
+# =========================
+# Docker runtime data
+# =========================
+
+data/
+backup/
+
+# =========================
+# Logs
+# =========================
+
+*.log
+logs/
+*.out
+
+# =========================
+# OS files
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+# Editors / IDE
+# =========================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Temporary files
+# =========================
+
+tmp/
+temp/
+*.tmp
+*.bak
