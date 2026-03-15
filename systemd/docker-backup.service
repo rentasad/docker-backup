@@ -1,0 +1,9 @@
+[Unit]
+Description=Docker Backup mit Restic
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/srv/restic/docker-backup.sh
