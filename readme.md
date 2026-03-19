@@ -1,320 +1,220 @@
-# Docker Backup mit Restic, Rclone und Gotify
+﻿# Docker Backup with Restic, Rclone, and Gotify
 
-## Überblick
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+![OS: Linux](https://img.shields.io/badge/OS-Linux-333?logo=linux)
+![Shell: Bash](https://img.shields.io/badge/Shell-Bash-121011?logo=gnubash)
+![Backup: Restic](https://img.shields.io/badge/Backup-Restic-ffcc00)
+![Sync: Rclone](https://img.shields.io/badge/Sync-Rclone-3f79e8)
+![Notify: Gotify](https://img.shields.io/badge/Notify-Gotify-4caf50)
 
-Dieses Projekt automatisiert das Backup einer Docker-Umgebung auf einem Linux-Server. Das Backup umfasst:
+Automated backup for a Linux Docker host using local snapshots, Restic deduplication, and remote upload via Rclone.
 
-* Docker Compose Stacks
-* Docker Volumes und Konfigurationsdateien
-* Vaultwarden Backup
-* MySQL Dump
+## Table of Contents
 
-Die Daten werden lokal als Snapshot gespeichert und anschließend mit Restic dedupliziert in ein Remote-Repository übertragen.
+- [Features](#features)
+- [Backup Flow](#backup-flow)
+- [Requirements](#requirements)
+- [Directory Layout](#directory-layout)
+- [Configuration](#configuration)
+- [Script Behavior](#script-behavior)
+- [Excluded Stacks](#excluded-stacks)
+- [systemd Automation](#systemd-automation)
+- [Run Manually](#run-manually)
+- [Restore](#restore)
+- [Maintenance](#maintenance)
+- [Additional Documentation](#additional-documentation)
+- [Project Status](#project-status)
 
-Benachrichtigungen über erfolgreiche oder fehlgeschlagene Backups erfolgen über Gotify.
+## Features
 
-Das Backup läuft automatisiert über einen systemd Timer.
+- Backup of Docker Compose stacks (including volumes and config)
+- Vaultwarden backup support
+- MySQL dump (`mysqldump` + `gzip`)
+- Deduplicated offsite backups with Restic
+- Gotify notifications for start/success/error/skip
+- Daily execution via `systemd` timer
+- Exclusion of infrastructure stacks from stop/start operations
 
----
+## Backup Flow
 
-## Architektur
+```text
+Docker data
+  -> Local snapshot (/srv/backups/<timestamp>)
+  -> Restic backup
+  -> Rclone remote (rclone:1blu:restic-repo)
+  -> 1blu storage
+```
 
-Backup Ablauf:
+## Requirements
 
-Docker Daten
-↓
-Lokaler Snapshot (/srv/backups/<timestamp>)
-↓
-Restic Backup
-↓
-rclone Remote
-↓
-1blu Storage
+Required tools:
 
-Wichtige Eigenschaften:
+- `docker`
+- `docker compose` (plugin)
+- `restic`
+- `rclone`
+- `curl`
+- `gzip`
+- `flock` (from `util-linux`)
 
-* Restic arbeitet deduplizierend
-* Es werden nur geänderte Daten übertragen
-* Snapshots bleiben vollständig wiederherstellbar
-* Infrastrukturcontainer können vom Stoppen ausgeschlossen werden
+Example install (Debian/Ubuntu):
 
----
+```bash
+apt update
+apt install -y docker.io docker-compose-plugin restic rclone curl util-linux
+```
 
-## Verzeichnisstruktur
+## Directory Layout
 
-Docker Umgebung:
+```text
+/srv/docker                      # Docker environment
+/srv/backups                     # Local snapshot targets
+/srv/restic/docker-backup.sh     # Backup script
+/srv/restic/.env                 # Runtime configuration
+/srv/restic/restic-password.txt  # Restic password file
+```
 
-/srv/docker
+Example snapshot:
 
-Beispiele:
-
-/srv/docker/apps/vaultwarden
-/srv/docker/apps/stirlingpdf
-/srv/docker/infrastructure/gotify
-/srv/docker/smarthome/homeassistant
-
-Backup Verzeichnis:
-
-/srv/backups
-
-Beispiel Snapshot:
-
+```text
 /srv/backups/2026-03-15_22-34
+```
 
-Backup Script:
+## Configuration
 
-/srv/restic/docker-backup.sh
+### 1) Create `.env`
 
-Konfiguration:
+Path: `/srv/restic/.env`
 
-/srv/restic/.env
+Example (see `.env.example` in this repo):
 
-Restic Passwort:
-
-/srv/restic/restic-password.txt
-
----
-
-## Benötigte Software
-
-Folgende Tools werden benötigt:
-
-* docker
-* docker compose
-* restic
-* rclone
-* curl
-* gzip
-* flock
-
-Installation (Debian/Ubuntu Beispiel):
-
-apt install docker.io docker-compose-plugin restic rclone curl
-
----
-
-## Restic Repository
-
-Remote Repository:
-
-rclone:1blu:restic-repo
-
-Repository initialisieren:
-
-restic -r rclone:1blu:restic-repo 
---password-file /srv/restic/restic-password.txt 
-init
-
-Snapshots anzeigen:
-
-restic -r rclone:1blu:restic-repo 
---password-file /srv/restic/restic-password.txt 
-snapshots
-
----
-
-## Konfiguration (.env)
-
-Datei:
-
-/srv/restic/.env
-
-Beispiel:
-
+```env
 MYSQL_CONTAINER=mysql
 MYSQL_USER=root
-MYSQL_PASSWORD=DEIN_PASSWORT
+MYSQL_PASSWORD=CHANGEME
 
-GOTIFY_URL=[https://gotify.example.com/message](https://gotify.example.com/message)
-GOTIFY_TOKEN=DEIN_TOKEN
+GOTIFY_URL=https://gotify.example.com/message
+GOTIFY_TOKEN=CHANGEME
 
 GOTIFY_PRIORITY_SUCCESS=4
 GOTIFY_PRIORITY_ERROR=8
+```
 
-Diese Datei wird vom Backup Script automatisch geladen.
+### 2) Initialize the Restic repository
 
----
+```bash
+restic -r rclone:1blu:restic-repo \
+  --password-file /srv/restic/restic-password.txt \
+  init
+```
 
-## Backup Script
+List snapshots:
 
-Script:
+```bash
+restic -r rclone:1blu:restic-repo \
+  --password-file /srv/restic/restic-password.txt \
+  snapshots
+```
 
-/srv/restic/docker-backup.sh
+## Script Behavior
 
-Aufgaben des Scripts:
+The script [`scripts/docker-backup.sh`](scripts/docker-backup.sh) performs:
 
-1. Aktive Docker Compose Stacks ermitteln
-2. Vaultwarden Backup ausführen
-3. MySQL Dump erstellen
-4. Aktive Stacks stoppen
-5. Docker Daten lokal kopieren
-6. Restic Backup ausführen
-7. Alte Snapshots bereinigen
-8. Stacks wieder starten
-9. Gotify Benachrichtigung senden
-
----
+1. Detect active Docker Compose stacks
+2. Run Vaultwarden backup
+3. Create MySQL dump
+4. Stop active stacks (except excluded ones)
+5. Copy Docker directories to local snapshot
+6. Run Restic backup to remote repository
+7. Apply retention policy and prune old snapshots
+8. Restart previously active stacks
+9. Send result notification via Gotify
 
 ## Excluded Stacks
 
-Bestimmte Infrastrukturcontainer sollen nicht gestoppt werden.
+Infrastructure stacks can be excluded from stop/start operations.
 
-Beispiel:
+Example from the script:
 
-* Gotify
-
-Konfiguration im Script:
-
+```bash
 EXCLUDED_STACK_DIRS=(
-"/srv/docker/infrastructure/gotify"
+  "/srv/docker/infrastructure/gotify"
+  "/srv/docker/infrastructure/ntpserver"
 )
-
-Optional zusätzlich Container Namen:
 
 EXCLUDED_CONTAINER_NAMES=(
-"gotify"
+  "gotify"
 )
-
----
-
-## Gotify Benachrichtigungen
-
-Das Script sendet folgende Nachrichten:
-
-Backup gestartet
-Backup erfolgreich
-Backup Fehler
-Backup übersprungen
-
-Beispiel Erfolgsmeldung:
-
-Host: docker-home
-Start: 2026-03-15 05:30
-Ende: 2026-03-15 05:32
-Dauer: 2m 18s
-Größe: 900 MB
-
----
+```
 
 ## systemd Automation
 
-Service Datei:
+Example unit files in this repository:
 
-/etc/systemd/system/docker-backup.service
+- [`systemd/docker-backup.service`](systemd/docker-backup.service)
+- [`systemd/docker-backup.timer`](systemd/docker-backup.timer)
 
-Inhalt:
+Copy them to `/etc/systemd/system/`, then run:
 
-[Unit]
-Description=Docker Backup
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-Type=oneshot
-User=root
-ExecStart=/srv/restic/docker-backup.sh
-
-Timer Datei:
-
-/etc/systemd/system/docker-backup.timer
-
-[Unit]
-Description=Docker Backup täglich
-
-[Timer]
-OnCalendar=*-*-* 05:30:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-
-Timer aktivieren:
-
+```bash
 systemctl daemon-reload
 systemctl enable --now docker-backup.timer
+systemctl list-timers | grep docker-backup
+```
 
-Timer prüfen:
+Default schedule in timer:
 
-systemctl list-timers
+```ini
+OnCalendar=*-*-* 05:30:00
+```
 
----
+## Run Manually
 
-## Backup manuell starten
-
+```bash
 systemctl start docker-backup.service
-
-Logs anzeigen:
-
 journalctl -u docker-backup.service -f
-
----
+```
 
 ## Restore
 
-Snapshots anzeigen:
+Detaillierte Anweisungen zur Wiederherstellung finden Sie im Verzeichnis [`restore/`](restore/README.md).
 
-restic -r rclone:1blu:restic-repo 
---password-file /srv/restic/restic-password.txt 
-snapshots
+Kurzübersicht:
 
-Snapshot wiederherstellen:
+```bash
+cd restore
+./restore.sh snapshots  # Snapshots auflisten
+./restore.sh ls latest  # Inhalt des neuesten Snapshots zeigen
+./restore.sh restore latest /mysql.sql.gz  # Einzelne Datei wiederherstellen
+```
 
-restic -r rclone:1blu:restic-repo 
---password-file /srv/restic/restic-password.txt 
-restore <snapshotID> --target /restore
+## Maintenance
 
----
+Check repository:
 
-## Wartung
+```bash
+restic -r rclone:1blu:restic-repo \
+  --password-file /srv/restic/restic-password.txt \
+  check
+```
 
-Repository prüfen:
+Show stats:
 
-restic check
+```bash
+restic -r rclone:1blu:restic-repo \
+  --password-file /srv/restic/restic-password.txt \
+  stats
+```
 
-Statistik anzeigen:
+## Additional Documentation
 
-restic stats
+- [Architecture](docs/architecture.md)
+- [Restore Guide](docs/restore.md)
+- [Troubleshooting](docs/troubleshooting.md)
 
----
+## Project Status
 
-## Hinweise
-
-* Restic überträgt nur geänderte Daten
-* Backups sind dedupliziert
-* Mehrere Snapshots teilen sich identische Blöcke
-* Der lokale Snapshot dient als zusätzliche Sicherheit
-
----
-
-## Erweiterungsmöglichkeiten
-
-Mögliche Verbesserungen:
-
-* Telegram oder Matrix Benachrichtigungen
-* Backup Monitoring
-* automatische Restore Tests
-* separate Datenbank Backups
-* Backup Rotation lokal
-
----
-
-## Wartungshinweis
-
-Bei Änderungen an der Docker Infrastruktur sollte geprüft werden:
-
-* ob neue Stacks Backup relevant sind
-* ob neue Infrastrukturcontainer ausgeschlossen werden sollen
-
----
-
-## Projektstatus
-
-Status: produktiv
-
-Automatisches tägliches Backup
-
-Startzeit: 05:30
-
-Speicherziel: 1blu Storage über rclone
-
-Benachrichtigungen: Gotify
+- Status: production
+- Daily automated backup at: `05:30`
+- Storage target: `1blu` via `rclone`
+- Notifications: `Gotify`
