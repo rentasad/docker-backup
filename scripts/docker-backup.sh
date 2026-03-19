@@ -12,13 +12,15 @@ EXCLUDED_CONTAINER_NAMES=(
     "gotify"
 )
 
-BACKUP_ROOT="/srv/backups"
+
 DATE="$(date +%F_%H-%M)"
 TARGET_DIR="$BACKUP_ROOT/$DATE"
-DOCKER_DIR="/srv/docker"
+
 
 ENV_FILE="/srv/restic/.env"
-RESTIC_PASSWORD_FILE="/srv/restic/restic-password.txt"
+CONFIG_FILE="/srv/restic/backup.conf"
+
+
 LOCK_FILE="/var/lock/docker-backup.lock"
 ACTIVE_STACK_FILE=""
 BACKUP_OK=0
@@ -61,11 +63,18 @@ is_excluded_stack() {
 # === .env laden ===
 if [ -f "$ENV_FILE" ]; then
     set -a
-    # shellcheck disable=SC1090
     source "$ENV_FILE"
     set +a
 else
     echo "ENV-Datei nicht gefunden: $ENV_FILE"
+    exit 1
+fi
+
+if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck disable=SC1090
+    source "$CONFIG_FILE"
+else
+    echo "Config-Datei nicht gefunden: $CONFIG_FILE"
     exit 1
 fi
 
