@@ -161,6 +161,9 @@ The script [`scripts/docker-backup.sh`](scripts/docker-backup.sh) performs:
 
 Infrastructure stacks can be excluded from stop/start operations.
 
+Important: These exclusions only affect service orchestration during backup (`docker compose down/up`).
+They do not exclude data from backup content. The script still copies the full `DOCKER_DIR`.
+
 Set exclusions in `/srv/restic/backup.conf`:
 
 ```bash

@@ -9,6 +9,8 @@ restic-password.txt
 *.pem
 *.secret
 *.token
+backup.conf
+
 
 # =========================
 # Backup data (lokale Snapshots)

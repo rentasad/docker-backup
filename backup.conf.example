@@ -7,6 +7,10 @@ KEEP_DAILY=7
 KEEP_WEEKLY=4
 KEEP_MONTHLY=6
 
+# Diese Listen beeinflussen nur das Stoppen/Starten von Compose-Stacks
+# waehrend des Backups.
+# Sie schliessen keine Daten vom Dateibackup aus.
+# Das Backup kopiert weiterhin den gesamten Inhalt von DOCKER_DIR.
 EXCLUDED_STACK_DIRS=(
   "/srv/docker/infrastructure/gotify"
   "/srv/docker/infrastructure/ntpserver"
