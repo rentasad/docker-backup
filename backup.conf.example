@@ -1,0 +1,17 @@
+BACKUP_ROOT=/srv/backups
+DOCKER_DIR=/srv/docker
+MYSQL_CONTAINER=mysql
+
+RESTIC_TAG=docker-backup
+KEEP_DAILY=7
+KEEP_WEEKLY=4
+KEEP_MONTHLY=6
+
+EXCLUDED_STACK_DIRS=(
+  "/srv/docker/infrastructure/gotify"
+  "/srv/docker/infrastructure/ntpserver"
+)
+
+EXCLUDED_CONTAINER_NAMES=(
+  "gotify"
+)

@@ -100,7 +100,34 @@ GOTIFY_PRIORITY_SUCCESS=4
 GOTIFY_PRIORITY_ERROR=8
 ```
 
-### 2) Initialize the Restic repository
+### 2) Create `backup.conf`
+
+Path: `/srv/restic/backup.conf`
+
+Template: `backup.conf.example` (copy and adjust for your host)
+
+Example:
+
+```bash
+BACKUP_ROOT=/srv/backups
+DOCKER_DIR=/srv/docker
+MYSQL_CONTAINER=mysql
+RESTIC_TAG=docker-backup
+KEEP_DAILY=7
+KEEP_WEEKLY=4
+KEEP_MONTHLY=6
+
+EXCLUDED_STACK_DIRS=(
+  "/srv/docker/infrastructure/gotify"
+  "/srv/docker/infrastructure/ntpserver"
+)
+
+EXCLUDED_CONTAINER_NAMES=(
+  "gotify"
+)
+```
+
+### 3) Initialize the Restic repository
 
 ```bash
 restic -r rclone:1blu:restic-repo \
@@ -134,7 +161,7 @@ The script [`scripts/docker-backup.sh`](scripts/docker-backup.sh) performs:
 
 Infrastructure stacks can be excluded from stop/start operations.
 
-Example from the script:
+Set exclusions in `/srv/restic/backup.conf`:
 
 ```bash
 EXCLUDED_STACK_DIRS=(

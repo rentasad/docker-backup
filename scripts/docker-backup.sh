@@ -3,20 +3,6 @@ set -Eeuo pipefail
 
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# === Konfiguration ===
-EXCLUDED_STACK_DIRS=(
-    "/srv/docker/infrastructure/gotify"
-    "/srv/docker/infrastructure/ntpserver"
-)
-EXCLUDED_CONTAINER_NAMES=(
-    "gotify"
-)
-
-
-DATE="$(date +%F_%H-%M)"
-TARGET_DIR="$BACKUP_ROOT/$DATE"
-
-
 ENV_FILE="/srv/restic/.env"
 CONFIG_FILE="/srv/restic/backup.conf"
 
@@ -77,6 +63,13 @@ else
     echo "Config-Datei nicht gefunden: $CONFIG_FILE"
     exit 1
 fi
+
+# Defaults fuer optionale Ausschluesse in backup.conf
+EXCLUDED_STACK_DIRS=("${EXCLUDED_STACK_DIRS[@]:-}")
+EXCLUDED_CONTAINER_NAMES=("${EXCLUDED_CONTAINER_NAMES[@]:-}")
+
+DATE="$(date +%F_%H-%M)"
+TARGET_DIR="$BACKUP_ROOT/$DATE"
 
 # === Hilfsfunktionen ===
 log() {
