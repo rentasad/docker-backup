@@ -294,7 +294,24 @@ done < "$ACTIVE_STACK_FILE"
 # 5. Docker-Verzeichnisse sichern
 log "--- Kopiere Docker-Verzeichnisse ---"
 mkdir -p "$TARGET_DIR/docker"
-cp -a "$DOCKER_DIR/." "$TARGET_DIR/docker/"
+
+if command -v pv >/dev/null 2>&1; then
+    log "Kopiere mit Fortschritt (pv)"
+    COPY_SIZE_BYTES="$(du -sb "$DOCKER_DIR" 2>/dev/null | awk '{print $1}')"
+
+    if [ -n "${COPY_SIZE_BYTES:-}" ]; then
+        tar -C "$DOCKER_DIR" -cf - . \
+            | pv -pterb -s "$COPY_SIZE_BYTES" \
+            | tar -C "$TARGET_DIR/docker" -xpf -
+    else
+        tar -C "$DOCKER_DIR" -cf - . \
+            | pv -pterb \
+            | tar -C "$TARGET_DIR/docker" -xpf -
+    fi
+else
+    log "pv nicht gefunden, kopiere ohne Fortschrittsanzeige"
+    cp -a "$DOCKER_DIR/." "$TARGET_DIR/docker/"
+fi
 
 # 6. Restic Backup
 log "--- Restic Backup ---"

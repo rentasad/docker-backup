@@ -57,12 +57,13 @@ Required tools:
 - `curl`
 - `gzip`
 - `flock` (from `util-linux`)
+- `pv` (optional, for copy progress display)
 
 Example install (Debian/Ubuntu):
 
 ```bash
 apt update
-apt install -y docker.io docker-compose-plugin restic rclone curl util-linux
+apt install -y docker.io docker-compose-plugin restic rclone curl util-linux pv
 ```
 
 ## Directory Layout
