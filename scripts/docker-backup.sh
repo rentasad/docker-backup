@@ -73,6 +73,20 @@ fi
 # Defaults fuer optionale Ausschluesse in backup.conf
 EXCLUDED_STACK_DIRS=("${EXCLUDED_STACK_DIRS[@]:-}")
 EXCLUDED_CONTAINER_NAMES=("${EXCLUDED_CONTAINER_NAMES[@]:-}")
+RESTIC_TAG="${RESTIC_TAG:-docker-backup}"
+KEEP_DAILY="${KEEP_DAILY:-7}"
+KEEP_WEEKLY="${KEEP_WEEKLY:-4}"
+KEEP_MONTHLY="${KEEP_MONTHLY:-6}"
+
+RESTIC_AUTH_ARGS=()
+if [ -n "${RESTIC_PASSWORD_FILE:-}" ]; then
+    RESTIC_AUTH_ARGS=(--password-file "$RESTIC_PASSWORD_FILE")
+elif [ -n "${RESTIC_PASSWORD:-}" ]; then
+    RESTIC_AUTH_ARGS=()
+else
+    echo "Restic Passwort fehlt: Bitte RESTIC_PASSWORD_FILE (backup.conf) oder RESTIC_PASSWORD (.env) setzen."
+    exit 1
+fi
 
 DATE="$(date +%F_%H-%M)"
 TARGET_DIR="$BACKUP_ROOT/$DATE"
@@ -83,6 +97,12 @@ LOG_FILE="$LOG_DIR/docker-backup-$DATE.log"
 log() {
     echo "[$(date '+%F %T')] $*"
 }
+
+on_error() {
+    local exit_code=$?
+    log "FEHLER: Kommando fehlgeschlagen (Exit $exit_code) in Zeile ${BASH_LINENO[0]}: ${BASH_COMMAND}"
+}
+trap on_error ERR
 
 send_gotify() {
     local title="$1"
@@ -296,7 +316,7 @@ log "--- Kopiere Docker-Verzeichnisse ---"
 mkdir -p "$TARGET_DIR/docker"
 
 if command -v pv >/dev/null 2>&1; then
-    log "Kopiere mit Fortschritt (pv)"
+    log "Kopiere mit Fortschrittsanzeige (pv)"
     COPY_SIZE_BYTES="$(du -sb "$DOCKER_DIR" 2>/dev/null | awk '{print $1}')"
 
     if [ -n "${COPY_SIZE_BYTES:-}" ]; then
@@ -316,15 +336,15 @@ fi
 # 6. Restic Backup
 log "--- Restic Backup ---"
 restic -r "$RESTIC_REPOSITORY" \
-    --password-file "$RESTIC_PASSWORD_FILE" \
+    "${RESTIC_AUTH_ARGS[@]}" \
     backup "$TARGET_DIR" \
-    --tag docker-backup \
+    --tag "$RESTIC_TAG" \
     --verbose
 
 # 7. Alte Snapshots aufräumen
 log "--- Restic Aufräumen ---"
 restic -r "$RESTIC_REPOSITORY" \
-    --password-file "$RESTIC_PASSWORD_FILE" \
-    forget --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+    "${RESTIC_AUTH_ARGS[@]}" \
+    forget --keep-daily "$KEEP_DAILY" --keep-weekly "$KEEP_WEEKLY" --keep-monthly "$KEEP_MONTHLY" --prune
 
 BACKUP_OK=1
