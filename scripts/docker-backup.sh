@@ -321,11 +321,11 @@ if command -v pv >/dev/null 2>&1; then
 
     if [ -n "${COPY_SIZE_BYTES:-}" ]; then
         tar -C "$DOCKER_DIR" -cf - . \
-            | pv -pterb -s "$COPY_SIZE_BYTES" \
+            | pv -f -pterb -s "$COPY_SIZE_BYTES" \
             | tar -C "$TARGET_DIR/docker" -xpf -
     else
         tar -C "$DOCKER_DIR" -cf - . \
-            | pv -pterb \
+            | pv -f -pterb \
             | tar -C "$TARGET_DIR/docker" -xpf -
     fi
 else
