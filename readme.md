@@ -32,6 +32,7 @@ Automated backup for a Linux Docker host using local snapshots, Restic deduplica
 - MySQL dump (`mysqldump` + `gzip`)
 - Deduplicated offsite backups with Restic
 - Gotify notifications for start/success/error/skip
+- Run logs (info + errors) written to `./log/`
 - Daily execution via `systemd` timer
 - Exclusion of infrastructure stacks from stop/start operations
 
@@ -71,6 +72,7 @@ apt install -y docker.io docker-compose-plugin restic rclone curl util-linux
 /srv/backups                     # Local snapshot targets
 /srv/restic/docker-backup.sh     # Backup script
 /srv/restic/.env                 # Runtime configuration
+/srv/restic/log/                 # Backup run logs
 /srv/restic/restic-password.txt  # Restic password file
 ```
 
@@ -105,6 +107,7 @@ GOTIFY_PRIORITY_ERROR=8
 Path: `/srv/restic/backup.conf`
 
 Template: `backup.conf.example` (copy and adjust for your host)
+Optional: set `LOG_DIR` (otherwise default is `<project-root>/log`)
 
 Example:
 
@@ -156,6 +159,7 @@ The script [`scripts/docker-backup.sh`](scripts/docker-backup.sh) performs:
 7. Apply retention policy and prune old snapshots
 8. Restart previously active stacks
 9. Send result notification via Gotify
+10. Write complete run log (stdout/stderr) to `LOG_DIR/docker-backup-<timestamp>.log`
 
 ## Excluded Stacks
 

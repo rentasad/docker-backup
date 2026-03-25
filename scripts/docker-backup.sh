@@ -6,6 +6,12 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV_FILE="/srv/restic/.env"
 CONFIG_FILE="/srv/restic/backup.conf"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ "$(basename "$SCRIPT_DIR")" = "scripts" ]; then
+    DEFAULT_LOG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/log"
+else
+    DEFAULT_LOG_DIR="$SCRIPT_DIR/log"
+fi
 
 LOCK_FILE="/var/lock/docker-backup.lock"
 ACTIVE_STACK_FILE=""
@@ -16,7 +22,7 @@ HOSTNAME="$(hostname -f 2>/dev/null || hostname)"
 
 export RCLONE_CONFIG="/home/matthi/.config/rclone/rclone.conf"
 export RESTIC_REPOSITORY="rclone:1blu:restic-repo"
-
+#
 is_excluded_stack() {
     local dir="$1"
     local container_name=""
@@ -70,6 +76,8 @@ EXCLUDED_CONTAINER_NAMES=("${EXCLUDED_CONTAINER_NAMES[@]:-}")
 
 DATE="$(date +%F_%H-%M)"
 TARGET_DIR="$BACKUP_ROOT/$DATE"
+LOG_DIR="${LOG_DIR:-$DEFAULT_LOG_DIR}"
+LOG_FILE="$LOG_DIR/docker-backup-$DATE.log"
 
 # === Hilfsfunktionen ===
 log() {
@@ -107,6 +115,11 @@ format_duration() {
         printf '%ds' "$s"
     fi
 }
+
+mkdir -p "$LOG_DIR"
+touch "$LOG_FILE"
+exec > >(tee -a "$LOG_FILE") 2>&1
+log "Log-Datei: $LOG_FILE"
 
 restart_stacks() {
     if [ -z "${ACTIVE_STACK_FILE:-}" ] || [ ! -f "$ACTIVE_STACK_FILE" ]; then
