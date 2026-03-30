@@ -1,5 +1,7 @@
 ﻿# Docker Backup with Restic, Rclone, and Gotify
 
+[Deutsch](readme.de.md) | [English](readme.md)
+
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![OS: Linux](https://img.shields.io/badge/OS-Linux-333?logo=linux)
 ![Shell: Bash](https://img.shields.io/badge/Shell-Bash-121011?logo=gnubash)
