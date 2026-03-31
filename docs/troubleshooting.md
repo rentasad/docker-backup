@@ -18,14 +18,16 @@ Expected output: 1blu:
 
 Error: wrong password or no key found
 
-Check password file:
+Check password in `.env`:
 
-/srv/restic/restic-password.txt
+`RESTIC_PASSWORD='...'`
 
 Test:
 
-restic -r rclone:1blu:restic-repo --password-file
-/srv/restic/restic-password.txt snapshots
+```bash
+source restore/setEnvironment.sh
+restic snapshots
+```
 
 ## Gotify notifications not working
 

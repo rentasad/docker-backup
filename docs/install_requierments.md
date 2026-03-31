@@ -80,4 +80,4 @@ rclone version
 
 ## Nächste Schritte
 
-Nachdem die Infrastruktur steht, kannst du mit der [Konfiguration des Backups](../readme.de.md#konfiguration) oder der [Wiederherstellung (Restore)](../restore/README.md) fortfahren.
+Nachdem die Infrastruktur steht, kannst du mit der [Konfiguration von Rclone](rclone_setup.md), der [Konfiguration des Backups](../readme.de.md#konfiguration) oder dem [Wiederherstellungs-Leitfaden](restore.md) fortfahren.
