@@ -1,0 +1,41 @@
+# Rclone Konfiguration - Beispiel für verschiedene Backend-Typen
+
+# Beispiel: 1&1 / IONOS WebDAV
+[1blu]
+type = webdav
+url = https://webdav.hidrive.ionos.com/
+vendor = other
+user = ihr_username
+pass = obscured_password_hier  # Nutze "rclone obscure IHR_PASSWORT" zum Generieren
+
+# Beispiel: AWS S3
+[s3-backup]
+type = s3
+provider = AWS
+access_key_id = IHR_ACCESS_KEY
+secret_access_key = IHR_SECRET_KEY
+region = eu-central-1
+
+# Beispiel: Google Drive
+[gdrive]
+type = drive
+client_id =
+client_secret =
+token = {"access_token":"xxx","token_type":"Bearer","refresh_token":"xxx","expiry":"xxx"}
+
+# Beispiel: Backblaze B2
+[b2-backup]
+type = b2
+account = IHR_ACCOUNT_ID
+key = IHR_APPLICATION_KEY
+
+# Beispiel: SFTP
+[sftp-backup]
+type = sftp
+host = backup.example.com
+user = backup_user
+port = 22
+key_file = /root/.ssh/id_rsa
+
+# Hinweis: Verwenden Sie "rclone config" zum interaktiven Einrichten
+# oder "rclone obscure" zum Verschleiern von Passwörtern

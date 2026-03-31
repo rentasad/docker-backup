@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  restore-test:
+    build: .
+    container_name: docker-restore-test
+    privileged: true
+    volumes:
+      # Backup-Konfiguration
+      - ./config/.env:/srv/docker/.env:ro
+      - ./config/rclone.conf:/root/.config/rclone/rclone.conf:ro
+
+      # Arbeitsverzeichnisse
+      - restore-infrastructure:/srv/docker/infrastructure
+      - restore-apps:/srv/docker/apps
+
+      # Docker-in-Docker Storage
+      - dind-storage:/var/lib/docker
+
+      # Optional: Backup-Daten lokal mounten
+      # - ./backup-data:/backup:ro
+
+    environment:
+      # Timezone setzen
+      - TZ=Europe/Berlin
+
+    stdin_open: true
+    tty: true
+
+    networks:
+      - restore-network
+
+networks:
+  restore-network:
+    driver: bridge
+
+volumes:
+  restore-infrastructure:
+  restore-apps:
+  dind-storage:
