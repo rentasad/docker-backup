@@ -74,9 +74,8 @@ apt install -y docker.io docker-compose-plugin restic rclone curl util-linux pv
 /srv/docker                      # Docker-Umgebung
 /srv/backups                     # Ziel für lokale Snapshots
 /srv/restic/docker-backup.sh     # Backup-Skript
-/srv/restic/.env                 # Laufzeit-Konfiguration
+/srv/restic/.env                 # Laufzeit-Konfiguration (inkl. Restic-Passwort)
 /srv/restic/log/                 # Protokolle der Backup-Läufe
-/srv/restic/restic-password.txt  # Restic-Passwortdatei
 ```
 
 Beispiel-Snapshot:
@@ -135,18 +134,16 @@ EXCLUDED_CONTAINER_NAMES=(
 
 ### 3) Restic-Repository initialisieren
 
+Bevor du Restic nutzen kannst, musst du eine Verbindung zu deinem Remote-Speicher herstellen. Siehe dazu die [Rclone-Konfigurationsanleitung](docs/rclone_setup.md).
+
 ```bash
-restic -r rclone:1blu:restic-repo \
-  --password-file /srv/restic/restic-password.txt \
-  init
+restic -r rclone:1blu:restic-repo init
 ```
 
 Snapshots auflisten:
 
 ```bash
-restic -r rclone:1blu:restic-repo \
-  --password-file /srv/restic/restic-password.txt \
-  snapshots
+restic -r rclone:1blu:restic-repo snapshots
 ```
 
 ## Skript-Verhalten
@@ -230,21 +227,19 @@ cd restore
 Repository prüfen:
 
 ```bash
-restic -r rclone:1blu:restic-repo \
-  --password-file /srv/restic/restic-password.txt \
-  check
+restic -r rclone:1blu:restic-repo check
 ```
 
 Statistiken anzeigen:
 
 ```bash
-restic -r rclone:1blu:restic-repo \
-  --password-file /srv/restic/restic-password.txt \
-  stats
+restic -r rclone:1blu:restic-repo stats
 ```
 
 ## Zusätzliche Dokumentation
 
+- [Installation der Voraussetzungen](docs/install_requierments.md)
+- [Rclone-Konfiguration](docs/rclone_setup.md)
 - [Architektur](docs/architecture.md)
 - [Wiederherstellungs-Leitfaden](docs/restore.md)
 - [Fehlerbehebung](docs/troubleshooting.md)

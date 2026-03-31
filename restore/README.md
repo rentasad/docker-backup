@@ -59,10 +59,10 @@ Nun können Sie in `/mnt/restic` mit `ls`, `cp` oder einem Dateimanager navigier
 
 ## 4. Manuelle Wiederherstellung (Restic CLI)
 
-Da das System auf Standard-Restic basiert, können Sie alle Restic-Befehle auch direkt nutzen. Stellen Sie sicher, dass die Umgebungsvariablen aus der `.env` geladen sind:
+Da das System auf Standard-Restic basiert, können Sie alle Restic-Befehle auch direkt nutzen. Laden Sie vorher die Umgebungsvariablen:
 
 ```bash
-set -a; source ../.env; set +a
+source ./setEnvironment.sh
 restic snapshots
 restic restore <ID> --target /pfad/zum/ziel --include /pfad/im/backup
 ```

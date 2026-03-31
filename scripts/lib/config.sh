@@ -40,12 +40,15 @@ load_configuration() {
     require_config_var "MYSQL_CONTAINER" || return 1
 
     RESTIC_AUTH_ARGS=()
-    if [ -n "${RESTIC_PASSWORD_FILE:-}" ]; then
-        RESTIC_AUTH_ARGS=(--password-file "$RESTIC_PASSWORD_FILE")
-    elif [ -n "${RESTIC_PASSWORD:-}" ]; then
+    if [ -n "${RESTIC_PASSWORD:-}" ]; then
+        # RESTIC_PASSWORD ist gesetzt (vorzugsweise in .env)
+        # Restic nutzt diese Variable automatisch, wenn sie exportiert ist.
+        # Da wir 'set -a' beim Laden der .env nutzen, ist sie bereits exportiert.
         RESTIC_AUTH_ARGS=()
+    elif [ -n "${RESTIC_PASSWORD_FILE:-}" ]; then
+        RESTIC_AUTH_ARGS=(--password-file "$RESTIC_PASSWORD_FILE")
     else
-        echo "Restic Passwort fehlt: Bitte RESTIC_PASSWORD_FILE (backup.conf) oder RESTIC_PASSWORD (.env) setzen."
+        echo "Restic Passwort fehlt: Bitte RESTIC_PASSWORD (.env) oder RESTIC_PASSWORD_FILE (backup.conf) setzen."
         return 1
     fi
 

@@ -18,6 +18,6 @@ Regeln:
 Wichtige Pfade:
 - Script: `/srv/restic/docker-backup.sh`
 - Env: `/srv/restic/.env`
-- Restic Passwort: `/srv/restic/restic-password.txt`
+- Restic Passwort: `.env` (`RESTIC_PASSWORD`)
 - Docker Root: `/srv/docker`
 - Lokale Snapshots: `/srv/backups`

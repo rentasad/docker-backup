@@ -74,9 +74,8 @@ apt install -y docker.io docker-compose-plugin restic rclone curl util-linux pv
 /srv/docker                      # Docker environment
 /srv/backups                     # Local snapshot targets
 /srv/restic/docker-backup.sh     # Backup script
-/srv/restic/.env                 # Runtime configuration
+/srv/restic/.env                 # Runtime configuration (including Restic password)
 /srv/restic/log/                 # Backup run logs
-/srv/restic/restic-password.txt  # Restic password file
 ```
 
 Example snapshot:
@@ -136,17 +135,13 @@ EXCLUDED_CONTAINER_NAMES=(
 ### 3) Initialize the Restic repository
 
 ```bash
-restic -r rclone:1blu:restic-repo \
-  --password-file /srv/restic/restic-password.txt \
-  init
+restic -r rclone:1blu:restic-repo init
 ```
 
 List snapshots:
 
 ```bash
-restic -r rclone:1blu:restic-repo \
-  --password-file /srv/restic/restic-password.txt \
-  snapshots
+restic -r rclone:1blu:restic-repo snapshots
 ```
 
 ## Script Behavior
@@ -230,17 +225,13 @@ cd restore
 Check repository:
 
 ```bash
-restic -r rclone:1blu:restic-repo \
-  --password-file /srv/restic/restic-password.txt \
-  check
+restic -r rclone:1blu:restic-repo check
 ```
 
 Show stats:
 
 ```bash
-restic -r rclone:1blu:restic-repo \
-  --password-file /srv/restic/restic-password.txt \
-  stats
+restic -r rclone:1blu:restic-repo stats
 ```
 
 ## Additional Documentation
