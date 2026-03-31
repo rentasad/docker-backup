@@ -3,8 +3,9 @@ set -Eeuo pipefail
 
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-ENV_FILE="/srv/restic/.env"
-CONFIG_FILE="/srv/restic/backup.conf"
+# Standardpfade für Konfigurationsdateien
+ENV_FILE="${ENV_FILE:-/opt/docker-backup/.env}"
+CONFIG_FILE="${CONFIG_FILE:-/opt/docker-backup/backup.conf}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"

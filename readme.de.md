@@ -73,9 +73,9 @@ apt install -y docker.io docker-compose-plugin restic rclone curl util-linux pv
 ```text
 /srv/docker                      # Docker-Umgebung
 /srv/backups                     # Ziel für lokale Snapshots
-/srv/restic/docker-backup.sh     # Backup-Skript
-/srv/restic/.env                 # Laufzeit-Konfiguration (inkl. Restic-Passwort)
-/srv/restic/log/                 # Protokolle der Backup-Läufe
+/opt/docker-backup/docker-backup.sh     # Backup-Skript
+/opt/docker-backup/.env                 # Laufzeit-Konfiguration (inkl. Restic-Passwort)
+/opt/docker-backup/log/                 # Protokolle der Backup-Läufe
 ```
 
 Beispiel-Snapshot:
@@ -88,7 +88,7 @@ Beispiel-Snapshot:
 
 ### 1) `.env` erstellen
 
-Pfad: `/srv/restic/.env`
+Pfad: `/opt/docker-backup/.env`
 
 Beispiel (siehe `.env.example` in diesem Repository):
 
@@ -106,7 +106,7 @@ GOTIFY_PRIORITY_ERROR=8
 
 ### 2) `backup.conf` erstellen
 
-Pfad: `/srv/restic/backup.conf`
+Pfad: `/opt/docker-backup/backup.conf`
 
 Vorlage: `backup.conf.example` (kopieren und für Ihren Host anpassen)
 Optional: `LOG_DIR` setzen (sonst Standard `<projekt-root>/log`)
@@ -168,7 +168,7 @@ Infrastruktur-Stacks können von den Stop/Start-Operationen ausgeschlossen werde
 Wichtig: Diese Ausschlüsse betreffen nur die Dienst-Orchestrierung während des Backups (`docker compose down/up`).
 Daten werden dadurch nicht vom Backup ausgeschlossen. Das Skript kopiert weiterhin das gesamte `DOCKER_DIR`.
 
-Ausschlüsse in `/srv/restic/backup.conf` festlegen:
+Ausschlüsse in `/opt/docker-backup/backup.conf` festlegen:
 
 ```bash
 EXCLUDED_STACK_DIRS=(

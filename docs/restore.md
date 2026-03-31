@@ -14,7 +14,7 @@ Bevor du manuelle Restic-Befehle ausführst, musst du die Umgebungsvariablen lad
 
 ```bash
 # In das Projekt-Verzeichnis wechseln
-cd /srv/restic
+cd /opt/docker-backup
 
 # Umgebung laden
 source restore/setEnvironment.sh

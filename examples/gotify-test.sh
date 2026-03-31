@@ -1,7 +1,7 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-ENV_FILE="${ENV_FILE:-/srv/restic/.env}"
+ENV_FILE="${ENV_FILE:-/opt/docker-backup/.env}"
 
 if [ ! -f "$ENV_FILE" ]; then
     echo "Env file not found: $ENV_FILE"

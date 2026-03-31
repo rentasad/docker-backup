@@ -16,8 +16,8 @@ Regeln:
 - Änderungen müssen restore-freundlich bleiben
 
 Wichtige Pfade:
-- Script: `/srv/restic/docker-backup.sh`
-- Env: `/srv/restic/.env`
+- Script: `/opt/docker-backup/docker-backup.sh`
+- Env: `/opt/docker-backup/.env`
 - Restic Passwort: `.env` (`RESTIC_PASSWORD`)
 - Docker Root: `/srv/docker`
 - Lokale Snapshots: `/srv/backups`

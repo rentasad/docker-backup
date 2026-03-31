@@ -31,7 +31,7 @@ Example: /srv/backups/2026-03-15_22-34
 
 ### Backup Script
 
-Main script: /srv/restic/docker-backup.sh
+Main script: /opt/docker-backup/docker-backup.sh
 
 Responsibilities: 1. Detect active Docker stacks 2. Run Vaultwarden
 backup 3. Create MySQL dump 4. Stop relevant stacks 5. Create snapshot

@@ -6,4 +6,4 @@ After=network-online.target
 [Service]
 Type=oneshot
 User=root
-ExecStart=/srv/restic/docker-backup.sh
+ExecStart=/opt/docker-backup/docker-backup.sh

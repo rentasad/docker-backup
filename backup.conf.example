@@ -3,7 +3,7 @@ DOCKER_DIR=/srv/docker
 MYSQL_CONTAINER=mysql
 # Optional: Logverzeichnis fuer Lauf- und Fehlerprotokolle
 # Standard ohne Angabe: <projekt-root>/log
-# LOG_DIR=/srv/restic/log
+# LOG_DIR=/opt/docker-backup/log
 
 RESTIC_TAG=docker-backup
 KEEP_DAILY=7
