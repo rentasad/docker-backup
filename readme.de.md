@@ -238,7 +238,7 @@ restic -r rclone:1blu:restic-repo stats
 
 ## Zusätzliche Dokumentation
 
-- [Installation der Voraussetzungen](docs/install_requierments.md)
+- [Installation der Voraussetzungen](docs/install_requirements.md)
 - [Rclone-Konfiguration](docs/rclone_setup.md)
 - [Architektur](docs/architecture.md)
 - [Wiederherstellungs-Leitfaden](docs/restore.md)

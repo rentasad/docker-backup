@@ -5,7 +5,7 @@ Dieses Dokument beschreibt, wie du Daten aus deinen Backups suchen, finden und w
 ## 1. Voraussetzungen & Vorbereitung
 
 Bevor du mit der Wiederherstellung beginnst, stelle sicher, dass:
-- Restic und Rclone installiert sind (siehe [Installationsanleitung](install_requierments.md)).
+- Restic und Rclone installiert sind (siehe [Installationsanleitung](install_requirements.md)).
 - Deine `rclone.config` korrekt eingerichtet ist (siehe [Rclone Setup](rclone_setup.md)).
 - Du Zugriff auf das Restic-Passwort hast (üblicherweise in der `.env` Datei).
 
