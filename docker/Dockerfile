@@ -23,7 +23,7 @@ RUN mkdir -m 0755 -p /etc/apt/keyrings && \
     "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
     $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-# Docker, Restic und Rclone installieren
+# Docker und Rclone installieren
 RUN apt-get update && \
     apt-get install -y \
     docker-ce \
@@ -31,9 +31,18 @@ RUN apt-get update && \
     containerd.io \
     docker-buildx-plugin \
     docker-compose-plugin \
-    restic \
     rclone \
+    bzip2 \
     && rm -rf /var/lib/apt/lists/*
+
+# Restic 0.16.4 manuell installieren (kompatibel mit neueren Snapshots)
+RUN RESTIC_VERSION=0.16.4 && \
+    ARCH=$(dpkg --print-architecture) && \
+    curl -fsSL "https://github.com/restic/restic/releases/download/v${RESTIC_VERSION}/restic_${RESTIC_VERSION}_linux_${ARCH}.bz2" -o restic.bz2 && \
+    bunzip2 restic.bz2 && \
+    chmod +x restic && \
+    mv restic /usr/local/bin/restic && \
+    restic version
 
 # Verzeichnisinfrastruktur erstellen
 RUN mkdir -p /srv/docker/infrastructure /srv/docker/apps && \

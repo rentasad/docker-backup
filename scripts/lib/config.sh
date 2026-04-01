@@ -28,8 +28,13 @@ load_configuration() {
         return 1
     fi
 
-    EXCLUDED_STACK_DIRS=("${EXCLUDED_STACK_DIRS[@]:-}")
-    EXCLUDED_CONTAINER_NAMES=("${EXCLUDED_CONTAINER_NAMES[@]:-}")
+    # Arrays initialisieren, falls nicht in backup.conf definiert
+    if [ "${#EXCLUDED_STACK_DIRS[@]}" -eq 0 ]; then
+        EXCLUDED_STACK_DIRS=()
+    fi
+    if [ "${#EXCLUDED_CONTAINER_NAMES[@]}" -eq 0 ]; then
+        EXCLUDED_CONTAINER_NAMES=()
+    fi
     RESTIC_TAG="${RESTIC_TAG:-docker-backup}"
     KEEP_DAILY="${KEEP_DAILY:-7}"
     KEEP_WEEKLY="${KEEP_WEEKLY:-4}"

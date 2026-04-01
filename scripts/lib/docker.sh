@@ -5,6 +5,8 @@ docker_is_excluded_stack() {
     local container_name=""
 
     for excluded in "${EXCLUDED_STACK_DIRS[@]}"; do
+        # Entferne Kommas am Ende, falls Nutzer diese faelschlicherweise in backup.conf nutzt
+        excluded="${excluded%,}"
         if [ "$dir" = "$excluded" ]; then
             log "Exclude ueber Working Dir: $dir"
             return 0
@@ -15,6 +17,8 @@ docker_is_excluded_stack() {
         [ -z "$container_name" ] && continue
 
         for excluded_container in "${EXCLUDED_CONTAINER_NAMES[@]}"; do
+            # Entferne Kommas am Ende
+            excluded_container="${excluded_container%,}"
             if [ "$container_name" = "$excluded_container" ]; then
                 log "Exclude ueber Containername: $container_name (Stack: $dir)"
                 return 0

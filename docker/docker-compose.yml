@@ -10,6 +10,9 @@ services:
       - ./config/.env:/srv/docker/.env:ro
       - ./config/rclone.conf:/root/.config/rclone/rclone.conf:ro
 
+      # Restore-Skripte
+      - ../restore/setEnvironment.sh:/srv/docker/restore/setEnvironment.sh:ro
+
       # Arbeitsverzeichnisse
       - restore-infrastructure:/srv/docker/infrastructure
       - restore-apps:/srv/docker/apps
