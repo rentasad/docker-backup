@@ -8,8 +8,16 @@ CONFIG_FILE="/opt/docker-backup/backup.conf"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Version laden
+APP_VERSION="unknown"
+if [ -f "$ROOT_DIR/VERSION" ]; then
+    APP_VERSION="$(cat "$ROOT_DIR/VERSION")"
+fi
+
 if [ "$(basename "$SCRIPT_DIR")" = "scripts" ]; then
-    DEFAULT_LOG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/log"
+    DEFAULT_LOG_DIR="$ROOT_DIR/log"
 else
     DEFAULT_LOG_DIR="$SCRIPT_DIR/log"
 fi
@@ -47,7 +55,7 @@ cleanup() {
     if [ "$exit_code" -eq 0 ] && [ "$BACKUP_OK" -eq 1 ]; then
         backup_size="$(du -sh "$TARGET_DIR" 2>/dev/null | awk '{print $1}')"
         send_gotify \
-            "Backup erfolgreich" \
+            "Backup erfolgreich (v$APP_VERSION)" \
             "Host: $HOSTNAME
 Start: $START_TIME
 Ende: $end_time
@@ -88,8 +96,8 @@ Grund: Es laeuft bereits ein anderes Backup." \
     exit 1
 fi
 
-send_gotify \
-    "Backup gestartet" \
+    send_gotify \
+    "Backup gestartet (v$APP_VERSION)" \
     "Host: $HOSTNAME
 Start: $START_TIME
 Ziel: $TARGET_DIR" \
@@ -98,7 +106,7 @@ Ziel: $TARGET_DIR" \
 mkdir -p "$TARGET_DIR"
 ACTIVE_STACK_FILE="$(mktemp /tmp/active_stacks.XXXXXX)"
 
-log "=== Backup gestartet: $DATE ==="
+log "=== Backup gestartet: $DATE (Version: $APP_VERSION) ==="
 
 log "--- Erfasse aktive Docker Compose Projekte ---"
 ACTIVE_STACK_DIRS="$(docker_detect_active_stack_dirs)"

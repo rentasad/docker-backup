@@ -24,6 +24,7 @@ Automatisiertes Backup für einen Linux Docker-Host mit lokalen Snapshots, Resti
 - [Manuelle Ausführung](#manuelle-ausführung)
 - [Wiederherstellung (Restore)](#wiederherstellung-restore)
 - [Wartung](#wartung)
+- [Versionierung](#versionierung)
 - [Zusätzliche Dokumentation](#zusätzliche-dokumentation)
 - [Projektstatus](#projektstatus)
 
@@ -243,6 +244,24 @@ Statistiken anzeigen:
 ```bash
 restic -r rclone:1blu:restic-repo stats
 ```
+
+## Versionierung
+
+Dieses Projekt verwendet [Semantic Versioning](https://semver.org/) (SemVer). Die aktuelle Version wird in der Datei `VERSION` im Wurzelverzeichnis des Projekts gespeichert.
+
+### Release-Prozess
+
+Um ein neues Release zu erstellen:
+1. Die Datei `VERSION` mit der neuen Versionsnummer aktualisieren (z. B. `1.1.0`).
+2. Die Änderung committen.
+3. Einen Git-Tag erstellen:
+   ```bash
+   git tag -a v1.1.0 -m "Release version 1.1.0"
+   ```
+4. Den Tag pushen:
+   ```bash
+   git push origin v1.1.0
+   ```
 
 ## Zusätzliche Dokumentation
 

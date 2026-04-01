@@ -24,6 +24,7 @@ Automated backup for a Linux Docker host using local snapshots, Restic deduplica
 - [Run Manually](#run-manually)
 - [Restore](#restore)
 - [Maintenance](#maintenance)
+- [Versioning](#versioning)
 - [Additional Documentation](#additional-documentation)
 - [Project Status](#project-status)
 
@@ -241,6 +242,24 @@ Show stats:
 ```bash
 restic -r rclone:1blu:restic-repo stats
 ```
+
+## Versioning
+
+This project uses [Semantic Versioning](https://semver.org/) (SemVer). The current version is stored in the `VERSION` file in the project root.
+
+### Release Process
+
+To create a new release:
+1. Update the `VERSION` file with the new version number (e.g., `1.1.0`).
+2. Commit the change.
+3. Create a Git tag:
+   ```bash
+   git tag -a v1.1.0 -m "Release version 1.1.0"
+   ```
+4. Push the tag:
+   ```bash
+   git push origin v1.1.0
+   ```
 
 ## Additional Documentation
 
