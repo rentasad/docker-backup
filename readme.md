@@ -93,15 +93,16 @@ Path: `/srv/restic/.env`
 Example (see `.env.example` in this repo):
 
 ```env
-MYSQL_CONTAINER=mysql
-MYSQL_USER=root
-MYSQL_PASSWORD=CHANGEME
-
+# GOTIFY configuration
 GOTIFY_URL=https://gotify.example.com/message
 GOTIFY_TOKEN=CHANGEME
-
 GOTIFY_PRIORITY_SUCCESS=4
 GOTIFY_PRIORITY_ERROR=8
+
+# Restic/Rclone configuration
+RCLONE_CONFIG=/home/user/.config/rclone/rclone.conf
+RESTIC_REPOSITORY=rclone:1blu:restic-repo
+RESTIC_PASSWORD=CHANGEME
 ```
 
 ### 2) Create `backup.conf`
@@ -116,7 +117,14 @@ Example:
 ```bash
 BACKUP_ROOT=/srv/backups
 DOCKER_DIR=/srv/docker
-MYSQL_CONTAINER=mysql
+
+# MySQL backup configuration
+# Format: "CONTAINER_NAME:USER:PASSWORD:PORT"
+MYSQL_INSTANCES=(
+  "mysql-prod:backup:secret123"
+  "mysql-dev:root:rootpass:3306"
+)
+
 RESTIC_TAG=docker-backup
 KEEP_DAILY=7
 KEEP_WEEKLY=4

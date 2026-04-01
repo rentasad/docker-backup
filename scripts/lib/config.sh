@@ -35,6 +35,22 @@ load_configuration() {
     if [ "${#EXCLUDED_CONTAINER_NAMES[@]}" -eq 0 ]; then
         EXCLUDED_CONTAINER_NAMES=()
     fi
+    
+    # MySQL-Konfiguration initialisieren
+    if [ "${#MYSQL_INSTANCES[@]}" -eq 0 ]; then
+        if [ -n "${MYSQL_CONTAINER:-}" ]; then
+            # Abwaertskompatibilitaet: Falls MYSQL_CONTAINER gesetzt ist, 
+            # konvertiere es in das neue Array-Format
+            MYSQL_INSTANCES=("$MYSQL_CONTAINER:${MYSQL_USER:-}:${MYSQL_PASSWORD:-}:3306")
+        else
+            MYSQL_INSTANCES=()
+        fi
+    fi
+    
+    # Standardwerte fuer MySQL-User und Passwort
+    MYSQL_DEFAULT_USER="${MYSQL_DEFAULT_USER:-${MYSQL_USER:-backup}}"
+    MYSQL_DEFAULT_PASSWORD="${MYSQL_DEFAULT_PASSWORD:-${MYSQL_PASSWORD:-}}"
+
     RESTIC_TAG="${RESTIC_TAG:-docker-backup}"
     KEEP_DAILY="${KEEP_DAILY:-7}"
     KEEP_WEEKLY="${KEEP_WEEKLY:-4}"
@@ -42,7 +58,6 @@ load_configuration() {
 
     require_config_var "BACKUP_ROOT" || return 1
     require_config_var "DOCKER_DIR" || return 1
-    require_config_var "MYSQL_CONTAINER" || return 1
 
     RESTIC_AUTH_ARGS=()
     if [ -n "${RESTIC_PASSWORD:-}" ]; then

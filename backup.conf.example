@@ -10,6 +10,20 @@ KEEP_DAILY=7
 KEEP_WEEKLY=4
 KEEP_MONTHLY=6
 
+# Standardwerte fuer MySQL (optional, falls viele Instanzen gleich konfiguriert sind)
+# MYSQL_DEFAULT_USER=backup
+# MYSQL_DEFAULT_PASSWORD=passwort_aus_env
+
+# Liste der zu sichernden MySQL-Instanzen
+# Format: "CONTAINER_NAME:USER:PASSWORD:PORT"
+# Wenn USER, PASSWORD oder PORT leer sind, werden die Standardwerte genutzt.
+# PORT ist standardmaessig 3306.
+MYSQL_INSTANCES=(
+  "mysql-prod:backup:geheim123:3306"
+  "mysql-dev:root:rootpass"
+  "mysql-legacy"
+)
+
 # Diese Listen beeinflussen nur das Stoppen/Starten von Compose-Stacks
 # waehrend des Backups.
 # Sie schliessen keine Daten vom Dateibackup aus.
