@@ -41,7 +41,9 @@ get_free_space_rclone() {
     rclone_remote=$(echo "$remote" | sed 's/^rclone://;s/:.*$//')
     
     if [ -n "$rclone_remote" ]; then
-        rclone about "${rclone_remote}:" --json 2>/dev/null | grep -o '"free":[0-9]*' | grep -o '[0-9]*' | awk '{ sum=$1 ; hum[1024**4]="TB";hum[1024**3]="GB";hum[1024**2]="MB";hum[1024]="KB"; for (x=1024**4; x>=1024; x/=1024){ if (sum>=x) { printf "%.2f %s\n",sum/x,hum[x]; break } } if (sum<1024) print sum " B" }'
+        rclone about "${rclone_remote}:" --json 2>/dev/null | grep -o '"free":[0-9]*' | grep -o '[0-9]*' | awk '{ sum=$1 ; hum[1024**4]="TB";hum[1024**3]="GB";hum[1024**2]="MB";hum[1024]="KB"; for (x=1024**4; x>=1024; x/=1024){ if (sum>=x) { printf "%.2f %s\n",sum/x,hum[x]; break } } if (sum<1024) print sum " B" }' || echo "unbekannt"
+    else
+        echo "unbekannt"
     fi
 }
 
@@ -107,13 +109,12 @@ backup_mysql_dump() {
         local pass="${c_pass:-$MYSQL_DEFAULT_PASSWORD}"
         local port="${c_port:-3306}"
         
-        if [ -z "$container" ]; then
+        if [ -n "$container" ]; then
+            local target="$TARGET_DIR/mysql/${container}.sql.gz"
+            do_mysql_dump "$container" "$user" "$pass" "$port" "$target" || true
+        else
             log "WARNUNG: Ungueltiger MySQL-Eintrag (Container-Name fehlt) - ueberspringe."
-            continue
         fi
-
-        local target="$TARGET_DIR/mysql/${container}.sql.gz"
-        do_mysql_dump "$container" "$user" "$pass" "$port" "$target" || true
     done
 }
 

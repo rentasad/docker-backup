@@ -53,9 +53,9 @@ cleanup() {
     fi
 
     if [ "$exit_code" -eq 0 ] && [ "$BACKUP_OK" -eq 1 ]; then
-        backup_size="$(du -sh "$TARGET_DIR" 2>/dev/null | awk '{print $1}')"
-        free_local="$(get_free_space_local "$BACKUP_ROOT")"
-        free_remote="$(get_free_space_rclone "$RESTIC_REPOSITORY")"
+        backup_size="$(du -sh "$TARGET_DIR" 2>/dev/null | awk '{print $1}')" || backup_size="unbekannt"
+        free_local="$(get_free_space_local "$BACKUP_ROOT")" || free_local="unbekannt"
+        free_remote="$(get_free_space_rclone "$RESTIC_REPOSITORY")" || free_remote="unbekannt"
 
         send_gotify \
             "Backup erfolgreich (v$APP_VERSION)" \
@@ -71,7 +71,7 @@ Restic: $RESTIC_REPOSITORY" \
             "${GOTIFY_PRIORITY_SUCCESS:-4}"
         log "=== Backup abgeschlossen: $DATE ==="
     else
-        free_local="$(get_free_space_local "$BACKUP_ROOT")"
+        free_local="$(get_free_space_local "$BACKUP_ROOT")" || free_local="unbekannt"
         send_gotify \
             "Backup FEHLER" \
             "Host: $HOSTNAME
