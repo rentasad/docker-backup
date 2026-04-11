@@ -9,6 +9,9 @@ RESTIC_TAG=docker-backup
 KEEP_DAILY=7
 KEEP_WEEKLY=4
 KEEP_MONTHLY=6
+# Wie viele lokale Snapshot-Ordner in BACKUP_ROOT aufbewahrt werden sollen (standard: 1)
+# Wenn 0, wird der lokale Ordner nach dem Restic-Backup sofort geloescht.
+KEEP_LOCAL_BACKUPS=1
 
 # Standardwerte fuer MySQL (optional, falls viele Instanzen gleich konfiguriert sind)
 # MYSQL_DEFAULT_USER=backup

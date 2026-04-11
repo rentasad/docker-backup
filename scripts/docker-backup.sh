@@ -130,5 +130,6 @@ docker_stop_stacks_from_file "$ACTIVE_STACK_FILE"
 backup_copy_docker_dirs
 backup_run_restic
 backup_prune_restic
+backup_cleanup_local
 
 BACKUP_OK=1

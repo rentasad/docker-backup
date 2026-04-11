@@ -161,3 +161,38 @@ backup_prune_restic() {
         "${RESTIC_AUTH_ARGS[@]}" \
         forget --keep-daily "$KEEP_DAILY" --keep-weekly "$KEEP_WEEKLY" --keep-monthly "$KEEP_MONTHLY" --prune
 }
+
+# Bereinigt alte lokale Backup-Ordner in BACKUP_ROOT.
+# Behaelt die Anzahl der Ordner gemäss KEEP_LOCAL_BACKUPS.
+backup_cleanup_local() {
+    log "--- Lokales Aufraeumen ($BACKUP_ROOT) ---"
+    
+    # Sicherstellen, dass BACKUP_ROOT existiert
+    if [ ! -d "$BACKUP_ROOT" ]; then
+        log "WARNUNG: BACKUP_ROOT ($BACKUP_ROOT) existiert nicht. Ueberspringe lokale Bereinigung."
+        return 0
+    fi
+
+    # Finde alle Verzeichnisse im Format YYYY-MM-DD_HH-MM
+    # Sortiere sie (älteste zuerst) und behalte nur die letzten N
+    local dirs
+    dirs=$(find "$BACKUP_ROOT" -maxdepth 1 -type d -regextype posix-extended -regex ".*/[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}$" | sort)
+    
+    local count
+    count=$(echo "$dirs" | grep -c "^" || echo 0)
+    
+    if [ "$count" -le "$KEEP_LOCAL_BACKUPS" ]; then
+        log "Keine alten lokalen Backups zum Loeschen (Vorhanden: $count, Behalten: $KEEP_LOCAL_BACKUPS)."
+        return 0
+    fi
+
+    local to_delete_count=$((count - KEEP_LOCAL_BACKUPS))
+    log "Loesche $to_delete_count alte lokale Backups..."
+
+    echo "$dirs" | head -n "$to_delete_count" | while read -r dir; do
+        if [ -d "$dir" ]; then
+            log "Entferne altes lokales Backup: $dir"
+            rm -rf "$dir"
+        fi
+    done
+}
