@@ -54,24 +54,32 @@ cleanup() {
 
     if [ "$exit_code" -eq 0 ] && [ "$BACKUP_OK" -eq 1 ]; then
         backup_size="$(du -sh "$TARGET_DIR" 2>/dev/null | awk '{print $1}')"
+        free_local="$(get_free_space_local "$BACKUP_ROOT")"
+        free_remote="$(get_free_space_rclone "$RESTIC_REPOSITORY")"
+
         send_gotify \
             "Backup erfolgreich (v$APP_VERSION)" \
             "Host: $HOSTNAME
 Start: $START_TIME
 Ende: $end_time
 Dauer: $duration
-Ziel: $TARGET_DIR
-Groesse: ${backup_size:-unbekannt}" \
+Lokales Ziel: $TARGET_DIR
+Groesse: ${backup_size:-unbekannt}
+Frei (Lokal): ${free_local:-unbekannt}
+Frei (Remote): ${free_remote:-unbekannt}
+Restic: $RESTIC_REPOSITORY" \
             "${GOTIFY_PRIORITY_SUCCESS:-4}"
         log "=== Backup abgeschlossen: $DATE ==="
     else
+        free_local="$(get_free_space_local "$BACKUP_ROOT")"
         send_gotify \
             "Backup FEHLER" \
             "Host: $HOSTNAME
 Start: $START_TIME
 Fehlerzeit: $end_time
 Dauer bis Fehler: $duration
-Letztes Ziel: $TARGET_DIR
+Letztes lokales Ziel: $TARGET_DIR
+Frei (Lokal): ${free_local:-unbekannt}
 Bitte Journal/Log pruefen." \
             "${GOTIFY_PRIORITY_ERROR:-8}"
         log "=== Backup fehlgeschlagen: $DATE ==="

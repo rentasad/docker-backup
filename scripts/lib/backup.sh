@@ -27,6 +27,24 @@ backup_vaultwarden() {
     fi
 }
 
+# Ermittelt den freien Speicherplatz am angegebenen Pfad
+get_free_space_local() {
+    local path="$1"
+    df -h "$path" | awk 'NR==2 {print $4}'
+}
+
+# Ermittelt den freien Speicherplatz auf dem Rclone-Remote
+get_free_space_rclone() {
+    local remote="$1"
+    # Extrahiere den Remote-Namen aus restic-Stil "rclone:remote:path"
+    local rclone_remote
+    rclone_remote=$(echo "$remote" | sed 's/^rclone://;s/:.*$//')
+    
+    if [ -n "$rclone_remote" ]; then
+        rclone about "${rclone_remote}:" --json 2>/dev/null | grep -o '"free":[0-9]*' | grep -o '[0-9]*' | awk '{ sum=$1 ; hum[1024**4]="TB";hum[1024**3]="GB";hum[1024**2]="MB";hum[1024]="KB"; for (x=1024**4; x>=1024; x/=1024){ if (sum>=x) { printf "%.2f %s\n",sum/x,hum[x]; break } } if (sum<1024) print sum " B" }'
+    fi
+}
+
 # Erstellt einen MySQL-Dump für einen bestimmten Container.
 # Parameter:
 #   $1: Container-Name
