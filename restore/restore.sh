@@ -19,7 +19,7 @@ if [ -f "$ENV_FILE" ]; then
     # shellcheck disable=SC1090
     source "$ENV_FILE"
     set +a
-q
+
 else
     echo "Fehler: .env-Datei nicht unter $ENV_FILE gefunden."
     exit 1
