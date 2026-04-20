@@ -30,4 +30,4 @@ Diese Bibliothek enthaelt die ausgelagerten Funktionen fuer `scripts/docker-back
 
 ## Design-Prinzip
 
-`docker-backup.sh` bleibt als Orchestrierung schlank und ruft nur noch klar abgegrenzte Funktionen aus den Modulen auf.
+`docker-backup.sh` bleibt als Orchestrierung schlank und ruft nur klar abgegrenzte Funktionen aus den Modulen auf.

@@ -149,3 +149,29 @@ backup_prune_restic() {
         forget --keep-daily "$KEEP_DAILY" --keep-weekly "$KEEP_WEEKLY" --keep-monthly "$KEEP_MONTHLY" --prune
 }
 
+backup_sync_to_internxt() {
+  log "--- Sync Restic-Repo zu Internxt ---"
+
+  # Prüfen ob internxt-Remote erreichbar ist
+  if ! rclone lsd "${INTERNXT_RCLONE_REMOTE}:" \
+       --no-check-certificate \
+       --contimeout 10s \
+       --timeout 30s \
+       &>/dev/null; then
+    log "WARNUNG: Internxt-WebDAV nicht erreichbar – Sync übersprungen"
+    return 0
+  fi
+
+  rclone sync \
+    "$(echo "${RESTIC_REPOSITORY}" | sed 's|rclone:||')" \
+    "${INTERNXT_RCLONE_REMOTE}:restic-repo" \
+    --no-check-certificate \
+    --transfers 3 \
+    --tpslimit 4 \
+    --retries 5 \
+    --log-file "${LOG_DIR}/rclone-internxt-$(date +%F).log" \
+    --log-level INFO \
+    || log "WARNUNG: Internxt-Sync fehlgeschlagen – primäres Backup (1blu) ist OK"
+
+  log "--- Internxt Sync abgeschlossen ---"
+}
