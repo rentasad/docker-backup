@@ -52,6 +52,8 @@ EXCLUDED_CONTAINER_NAMES=(
 INTERNXT_RCLONE_REMOTE="internxt"
 
 # Nextcloud-spezifisch
+# Dump-Befehl fuer die Nextcloud-DB (Standard: Autodetection mariadb-dump > mysqldump)
+# NEXTCLOUD_DB_DUMP_CMD=mariadb-dump
 NEXTCLOUD_APP_CONTAINER="nextcloud-app"
 NEXTCLOUD_DB_CONTAINER="nextcloud-db"
 NEXTCLOUD_DB_USER="${MYSQL_USER}"

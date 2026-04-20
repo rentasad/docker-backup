@@ -34,21 +34,24 @@ backup_nextcloud() {
   # 2. DB-Dump
   log "Nextcloud: Erstelle DB-Dump..."
 
-  if [ "$NC_DEBUG" = "1" ]; then
-    _nc_debug "Pruefe mysqldump Verfuegbarkeit in Container '${NEXTCLOUD_DB_CONTAINER}'..."
-    local mysqldump_check
-    mysqldump_check=$(docker exec "${NEXTCLOUD_DB_CONTAINER}" mysqldump --version 2>&1) \
-      && _nc_debug "mysqldump OK: ${mysqldump_check}" \
-      || _nc_debug "WARNUNG: mysqldump nicht gefunden (Exit $?): ${mysqldump_check}"
-    _nc_debug "Kommando: docker exec ${NEXTCLOUD_DB_CONTAINER} mysqldump --single-transaction --quick -u${NEXTCLOUD_DB_USER} -p[MASKED] ${NEXTCLOUD_DB_NAME}"
+  # Dump-Befehl: explizit konfigurierbar, sonst Autodetection (mariadb-dump > mysqldump)
+  local dump_cmd="${NEXTCLOUD_DB_DUMP_CMD:-}"
+  if [ -z "$dump_cmd" ]; then
+    if docker exec "${NEXTCLOUD_DB_CONTAINER}" which mariadb-dump &>/dev/null; then
+      dump_cmd="mariadb-dump"
+    else
+      dump_cmd="mysqldump"
+    fi
   fi
+  _nc_debug "Verwende Dump-Befehl: ${dump_cmd}"
+  _nc_debug "Kommando: docker exec ${NEXTCLOUD_DB_CONTAINER} ${dump_cmd} --single-transaction --quick -u${NEXTCLOUD_DB_USER} -p[MASKED] ${NEXTCLOUD_DB_NAME}"
 
   local dump_stderr_file
   dump_stderr_file=$(mktemp)
   local dump_exit=0
 
   docker exec "${NEXTCLOUD_DB_CONTAINER}" \
-    mysqldump \
+    "${dump_cmd}" \
       --single-transaction \
       --quick \
       -u"${NEXTCLOUD_DB_USER}" \
