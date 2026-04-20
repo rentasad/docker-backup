@@ -1,8 +1,23 @@
 #!/bin/bash
 # Nextcloud-spezifisches Backup mit Maintenance Mode
 
+# Debug-Modus: auf 1 setzen fuer ausfuehrliche Ausgaben (PW wird maskiert)
+NC_DEBUG="${NC_DEBUG:-1}"
+
+_nc_debug() {
+  [ "$NC_DEBUG" = "1" ] && log "[NC_DEBUG] $*"
+}
+
 backup_nextcloud() {
   log "--- Nextcloud Backup gestartet ---"
+
+  _nc_debug "NEXTCLOUD_APP_CONTAINER='${NEXTCLOUD_APP_CONTAINER}'"
+  _nc_debug "NEXTCLOUD_DB_CONTAINER='${NEXTCLOUD_DB_CONTAINER}'"
+  _nc_debug "NEXTCLOUD_DB_USER='${NEXTCLOUD_DB_USER}'"
+  _nc_debug "NEXTCLOUD_DB_PASSWORD='${NEXTCLOUD_DB_PASSWORD:0:2}***${NEXTCLOUD_DB_PASSWORD: -1}' (Laenge: ${#NEXTCLOUD_DB_PASSWORD})"
+  _nc_debug "NEXTCLOUD_DB_NAME='${NEXTCLOUD_DB_NAME}'"
+  _nc_debug "NEXTCLOUD_DATA_DIR='${NEXTCLOUD_DATA_DIR}'"
+  _nc_debug "TARGET_DIR='${TARGET_DIR}'"
 
   # 1. Maintenance Mode AN
   log "Nextcloud: Aktiviere Maintenance Mode..."
@@ -18,6 +33,8 @@ backup_nextcloud() {
 
   # 2. DB-Dump
   log "Nextcloud: Erstelle DB-Dump..."
+  _nc_debug "Fuehre mysqldump aus in Container '${NEXTCLOUD_DB_CONTAINER}'..."
+  local dump_exit=0
   docker exec "${NEXTCLOUD_DB_CONTAINER}" \
     mysqldump \
       --single-transaction \
@@ -26,7 +43,12 @@ backup_nextcloud() {
       -p"${NEXTCLOUD_DB_PASSWORD}" \
       "${NEXTCLOUD_DB_NAME}" \
     | gzip > "${NC_BACKUP_DIR}/nextcloud-db.sql.gz" \
-    || { log "FEHLER: Nextcloud DB-Dump fehlgeschlagen"; return 1; }
+    || dump_exit=$?
+  _nc_debug "mysqldump Exit-Code: ${dump_exit}"
+  if [ "$dump_exit" -ne 0 ]; then
+    log "FEHLER: Nextcloud DB-Dump fehlgeschlagen (Exit ${dump_exit})"
+    return 1
+  fi
   log "Nextcloud: DB-Dump abgeschlossen."
 
   # 3. Daten sichern
