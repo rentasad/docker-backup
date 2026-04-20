@@ -30,6 +30,8 @@ source "$LIB_DIR/config.sh"
 source "$LIB_DIR/docker.sh"
 # shellcheck disable=SC1090
 source "$LIB_DIR/backup.sh"
+# shellcheck disable=SC1090
+source "$LIB_DIR/nextcloud.sh"
 
 LOCK_FILE="/var/lock/docker-backup.lock"
 ACTIVE_STACK_FILE=""
@@ -126,10 +128,13 @@ echo
 
 backup_vaultwarden
 backup_mysql_dump
+backup_nextcloud
 docker_stop_stacks_from_file "$ACTIVE_STACK_FILE"
 backup_copy_docker_dirs
 backup_run_restic
+backup_sync_to_internxt
 backup_prune_restic
 backup_cleanup_local
+
 
 BACKUP_OK=1

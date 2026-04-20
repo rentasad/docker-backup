@@ -1,4 +1,4 @@
-﻿# Docker Backup with Restic, Rclone, and Gotify
+# Docker Backup with Restic, Rclone, and Gotify
 
 [Deutsch](readme.de.md) | [English](readme.md)
 
@@ -32,8 +32,11 @@ Automated backup for a Linux Docker host using local snapshots, Restic deduplica
 
 - Backup of Docker Compose stacks (including volumes and config)
 - Vaultwarden backup support
-- MySQL dump (`mysqldump` + `gzip`)
+- Nextcloud backup with automatic maintenance mode handling
+- MySQL / MariaDB dump per instance (configurable list)
 - Deduplicated offsite backups with Restic
+- Optional secondary sync to Internxt via Rclone
+- Local snapshot retention (configurable count)
 - Gotify notifications for start/success/error/skip
 - Run logs (info + errors) written to `./log/`
 - Daily execution via `systemd` timer
@@ -45,8 +48,9 @@ Automated backup for a Linux Docker host using local snapshots, Restic deduplica
 Docker data
   -> Local snapshot (/srv/backups/<timestamp>)
   -> Restic backup
-  -> Rclone remote (rclone:1blu:restic-repo)
-  -> 1blu storage
+  -> Rclone remote (e.g. rclone:1blu:restic-repo)
+  -> Primary storage (e.g. 1blu)
+  -> [Optional] Secondary sync to Internxt
 ```
 
 ## Requirements
@@ -69,14 +73,17 @@ apt update
 apt install -y docker.io docker-compose-plugin restic rclone curl util-linux pv
 ```
 
+See [Installation Guide](docs/install_requirements.md) for a step-by-step setup on a fresh system.
+
 ## Directory Layout
 
 ```text
-/srv/docker                      # Docker environment
-/srv/backups                     # Local snapshot targets
-/srv/restic/docker-backup.sh     # Backup script
-/srv/restic/.env                 # Runtime configuration (including Restic password)
-/srv/restic/log/                 # Backup run logs
+/srv/docker                        # Docker environment
+/srv/backups                       # Local snapshot targets
+/opt/docker-backup/                # Backup project root
+/opt/docker-backup/.env            # Runtime configuration (secrets, Restic password)
+/opt/docker-backup/backup.conf     # Backup configuration (paths, instances, retention)
+/opt/docker-backup/log/            # Backup run logs
 ```
 
 Example snapshot:
@@ -89,29 +96,39 @@ Example snapshot:
 
 ### 1) Create `.env`
 
-Path: `/srv/restic/.env`
+Path: `/opt/docker-backup/.env`
 
 Example (see `.env.example` in this repo):
 
 ```env
-# GOTIFY configuration
+# MySQL credentials (used as defaults for MYSQL_INSTANCES and Nextcloud)
+MYSQL_USER=root
+MYSQL_PASSWORD=CHANGEME
+
+# Per-instance passwords referenced from backup.conf
+PROD_DB_PASSWORD=CHANGEME
+NEXTCLOUD_DB_PASSWORD=CHANGEME
+
+# Gotify notifications
 GOTIFY_URL=https://gotify.example.com/message
 GOTIFY_TOKEN=CHANGEME
 GOTIFY_PRIORITY_SUCCESS=4
 GOTIFY_PRIORITY_ERROR=8
 
-# Restic/Rclone configuration
-RCLONE_CONFIG=/home/user/.config/rclone/rclone.conf
+# Restic / Rclone
+RCLONE_CONFIG=/root/.config/rclone/rclone.conf
 RESTIC_REPOSITORY=rclone:1blu:restic-repo
-RESTIC_PASSWORD=CHANGEME
+RESTIC_PASSWORD='YourResticPassword'
 ```
+
+> Passwords containing special characters (e.g. `*`, `$`, `!`) should be wrapped in single quotes.
 
 ### 2) Create `backup.conf`
 
-Path: `/srv/restic/backup.conf`
+Path: `/opt/docker-backup/backup.conf`
 
-Template: `backup.conf.example` (copy and adjust for your host)
-Optional: set `LOG_DIR` (otherwise default is `<project-root>/log`)
+Template: `backup.conf.example` (copy and adjust for your host).
+Optional: set `LOG_DIR` (otherwise default is `<project-root>/log`).
 
 Example:
 
@@ -119,29 +136,48 @@ Example:
 BACKUP_ROOT=/srv/backups
 DOCKER_DIR=/srv/docker
 
-# MySQL backup configuration
-# Format: "CONTAINER_NAME:USER:PASSWORD:PORT"
-MYSQL_INSTANCES=(
-  "mysql-prod:backup:secret123"
-  "mysql-dev:root:rootpass:3306"
-)
-
+# Retention
 RESTIC_TAG=docker-backup
 KEEP_DAILY=7
 KEEP_WEEKLY=4
 KEEP_MONTHLY=6
+# Number of local snapshot directories to keep (0 = delete immediately after Restic backup)
+KEEP_LOCAL_BACKUPS=1
+
+# MySQL instances to dump
+# Format: "CONTAINER_NAME:USER:PASSWORD_OR_VAR:PORT"
+# USER, PASSWORD, PORT are optional and fall back to MYSQL_DEFAULT_* / 3306
+MYSQL_INSTANCES=(
+  "mysql-prod:backup:PROD_DB_PASSWORD:3306"  # references .env variable
+  "mysql-dev:root:rootpass"                  # plaintext password
+  "mysql-legacy"                             # uses MYSQL_DEFAULT_* values
+)
 
 EXCLUDED_STACK_DIRS=(
   "/srv/docker/infrastructure/gotify"
-  "/srv/docker/infrastructure/ntpserver"
 )
-
 EXCLUDED_CONTAINER_NAMES=(
   "gotify"
 )
+
+# Internxt secondary sync (optional)
+# Name of the rclone remote for Internxt (as configured with rclone config)
+INTERNXT_RCLONE_REMOTE="internxt-webdav"
+
+# Nextcloud-specific backup (optional)
+NEXTCLOUD_APP_CONTAINER="nextcloud-app"
+NEXTCLOUD_DB_CONTAINER="nextcloud-db"
+NEXTCLOUD_DB_USER="nextcloud"
+NEXTCLOUD_DB_PASSWORD="${NEXTCLOUD_DB_PASSWORD}"  # references .env
+NEXTCLOUD_DB_NAME="nextcloud"
+NEXTCLOUD_DATA_DIR="/srv/docker/nextcloud/data/nextcloud"
+# Optional: override dump command (auto-detects mariadb-dump vs mysqldump if unset)
+# NEXTCLOUD_DB_DUMP_CMD=mariadb-dump
 ```
 
 ### 3) Initialize the Restic repository
+
+Before using Restic, configure your rclone remote. See the [Rclone Setup Guide](docs/rclone_setup.md).
 
 ```bash
 restic -r rclone:1blu:restic-repo init
@@ -159,14 +195,17 @@ The script [`scripts/docker-backup.sh`](scripts/docker-backup.sh) performs:
 
 1. Detect active Docker Compose stacks
 2. Run Vaultwarden backup
-3. Create MySQL dump
-4. Stop active stacks (except excluded ones)
-5. Copy Docker directories to local snapshot
-6. Run Restic backup to remote repository
-7. Apply retention policy and prune old snapshots
-8. Restart previously active stacks
-9. Send result notification via Gotify
-10. Write complete run log (stdout/stderr) to `LOG_DIR/docker-backup-<timestamp>.log`
+3. Create MySQL dumps (all configured `MYSQL_INSTANCES`)
+4. Run Nextcloud backup (maintenance mode on → DB dump → data sync → maintenance mode off)
+5. Stop active stacks (except excluded ones)
+6. Copy Docker directories to local snapshot
+7. Run Restic backup to remote repository
+8. Apply retention policy and prune old snapshots
+9. [Optional] Sync Restic repository to Internxt secondary remote
+10. Clean up old local snapshots (keeps `KEEP_LOCAL_BACKUPS` directories)
+11. Restart previously active stacks
+12. Send result notification via Gotify
+13. Write complete run log (stdout/stderr) to `LOG_DIR/docker-backup-<timestamp>.log`
 
 ## Excluded Stacks
 
@@ -175,7 +214,7 @@ Infrastructure stacks can be excluded from stop/start operations.
 Important: These exclusions only affect service orchestration during backup (`docker compose down/up`).
 They do not exclude data from backup content. The script still copies the full `DOCKER_DIR`.
 
-Set exclusions in `/srv/restic/backup.conf`:
+Set exclusions in `backup.conf`:
 
 ```bash
 EXCLUDED_STACK_DIRS=(
@@ -218,15 +257,15 @@ journalctl -u docker-backup.service -f
 
 ## Restore
 
-Detaillierte Anweisungen zur Wiederherstellung finden Sie im Verzeichnis [`restore/`](restore/README.md).
+See [`restore/README.md`](restore/README.md) and the [Restore Guide](docs/restore.md) for detailed instructions.
 
-Kurzübersicht:
+Quick overview:
 
 ```bash
 cd restore
-./restore.sh snapshots  # Snapshots auflisten
-./restore.sh ls latest  # Inhalt des neuesten Snapshots zeigen
-./restore.sh restore latest /mysql.sql.gz  # Einzelne Datei wiederherstellen
+./restore.sh snapshots  # List snapshots
+./restore.sh ls latest  # Show contents of latest snapshot
+./restore.sh restore latest /mysql.sql.gz  # Restore a single file
 ```
 
 ## Maintenance
@@ -263,6 +302,8 @@ To create a new release:
 
 ## Additional Documentation
 
+- [Installation Guide](docs/install_requirements.md)
+- [Rclone Setup](docs/rclone_setup.md)
 - [Architecture](docs/architecture.md)
 - [Restore Guide](docs/restore.md)
 - [Troubleshooting](docs/troubleshooting.md)
@@ -271,5 +312,6 @@ To create a new release:
 
 - Status: production
 - Daily automated backup at: `05:30`
-- Storage target: `1blu` via `rclone`
+- Primary storage: `1blu` via `rclone`
+- Secondary storage: `Internxt` via `rclone` (optional sync)
 - Notifications: `Gotify`

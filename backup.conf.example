@@ -15,16 +15,17 @@ KEEP_LOCAL_BACKUPS=1
 
 # Standardwerte fuer MySQL (optional, falls viele Instanzen gleich konfiguriert sind)
 # MYSQL_DEFAULT_USER=backup
-# MYSQL_DEFAULT_PASSWORD=passwort_aus_env
+# MYSQL_DEFAULT_PASSWORD=MYSQL_ROOT_PASSWORD # Referenziert Variable aus .env
 
 # Liste der zu sichernden MySQL-Instanzen
-# Format: "CONTAINER_NAME:USER:PASSWORD:PORT"
+# Format: "CONTAINER_NAME:USER:PASSWORD_OR_VAR:PORT"
 # Wenn USER, PASSWORD oder PORT leer sind, werden die Standardwerte genutzt.
+# PASSWORD_OR_VAR kann ein Klartext-Passwort oder der Name einer Variable aus .env sein.
 # PORT ist standardmaessig 3306.
 MYSQL_INSTANCES=(
-  "mysql-prod:backup:geheim123:3306"
-  "mysql-dev:root:rootpass"
-  "mysql-legacy"
+  "mysql-prod:backup:PROD_DB_PASSWORD:3306" # PROD_DB_PASSWORD in .env definieren
+  "mysql-dev:root:rootpass"                 # Klartext weiterhin moeglich
+  "mysql-legacy"                            # Nutzt Standardwerte
 )
 
 # Diese Listen beeinflussen nur das Stoppen/Starten von Compose-Stacks
@@ -38,4 +39,24 @@ EXCLUDED_STACK_DIRS=(
 
 EXCLUDED_CONTAINER_NAMES=(
   "gotify"
+  "caddy"
+  "ctop"
+  "watchtower"
+  "ntp"
+
 )
+
+
+
+# rclone-Remote-Name fuer Internxt-Sync (z.B. "internxt" oder "internxt-webdav")
+INTERNXT_RCLONE_REMOTE="internxt"
+
+# Nextcloud-spezifisch
+# Dump-Befehl fuer die Nextcloud-DB (Standard: Autodetection mariadb-dump > mysqldump)
+# NEXTCLOUD_DB_DUMP_CMD=mariadb-dump
+NEXTCLOUD_APP_CONTAINER="nextcloud-app"
+NEXTCLOUD_DB_CONTAINER="nextcloud-db"
+NEXTCLOUD_DB_USER="${MYSQL_USER}"
+NEXTCLOUD_DB_PASSWORD="${MYSQL_PASSWORD}"
+NEXTCLOUD_DB_NAME="${MYSQL_DATABASE}"
+NEXTCLOUD_DATA_DIR="/srv/docker/nextcloud/data/nextcloud"

@@ -39,7 +39,7 @@ get_free_space_rclone() {
     # Extrahiere den Remote-Namen aus restic-Stil "rclone:remote:path"
     local rclone_remote
     rclone_remote=$(echo "$remote" | sed 's/^rclone://;s/:.*$//')
-    
+
     if [ -n "$rclone_remote" ]; then
         rclone about "${rclone_remote}:" --json 2>/dev/null | grep -o '"free":[0-9]*' | grep -o '[0-9]*' | awk '{ sum=$1 ; hum[1024**4]="TB";hum[1024**3]="GB";hum[1024**2]="MB";hum[1024]="KB"; for (x=1024**4; x>=1024; x/=1024){ if (sum>=x) { printf "%.2f %s\n",sum/x,hum[x]; break } } if (sum<1024) print sum " B" }' || echo "unbekannt"
     else
@@ -60,6 +60,12 @@ do_mysql_dump() {
     local pass="$3"
     local port="${4:-3306}"
     local target_file="$5"
+
+    # Wenn 'pass' der Name einer gesetzten Variable ist, nutze deren Wert (Indirektion)
+    local actual_pass="$pass"
+    if [[ -n "${!pass:-}" ]]; then
+        actual_pass="${!pass}"
+    fi
 
     log "Sichere Instanz: $container (Port: $port) nach $target_file..."
 
@@ -166,7 +172,7 @@ backup_prune_restic() {
 # Behaelt die Anzahl der Ordner gemäss KEEP_LOCAL_BACKUPS.
 backup_cleanup_local() {
     log "--- Lokales Aufraeumen ($BACKUP_ROOT) ---"
-    
+
     # Sicherstellen, dass BACKUP_ROOT existiert
     if [ ! -d "$BACKUP_ROOT" ]; then
         log "WARNUNG: BACKUP_ROOT ($BACKUP_ROOT) existiert nicht. Ueberspringe lokale Bereinigung."
@@ -177,10 +183,10 @@ backup_cleanup_local() {
     # Sortiere sie (älteste zuerst) und behalte nur die letzten N
     local dirs
     dirs=$(find "$BACKUP_ROOT" -maxdepth 1 -type d -regextype posix-extended -regex ".*/[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}$" | sort)
-    
+
     local count
     count=$(echo "$dirs" | grep -c "^" || echo 0)
-    
+
     if [ "$count" -le "$KEEP_LOCAL_BACKUPS" ]; then
         log "Keine alten lokalen Backups zum Loeschen (Vorhanden: $count, Behalten: $KEEP_LOCAL_BACKUPS)."
         return 0
@@ -195,4 +201,31 @@ backup_cleanup_local() {
             rm -rf "$dir"
         fi
     done
+}
+
+backup_sync_to_internxt() {
+  log "--- Sync Restic-Repo zu Internxt ---"
+
+  # Prüfen ob internxt-Remote erreichbar ist
+  if ! rclone lsd "${INTERNXT_RCLONE_REMOTE}:" \
+       --no-check-certificate \
+       --contimeout 10s \
+       --timeout 30s \
+       &>/dev/null; then
+    log "WARNUNG: Internxt-WebDAV nicht erreichbar – Sync übersprungen"
+    return 0
+  fi
+
+  rclone sync \
+    "$(echo "${RESTIC_REPOSITORY}" | sed 's|rclone:||')" \
+    "${INTERNXT_RCLONE_REMOTE}:restic-repo" \
+    --no-check-certificate \
+    --transfers 3 \
+    --tpslimit 4 \
+    --retries 5 \
+    --log-file "${LOG_DIR}/rclone-internxt-$(date +%F).log" \
+    --log-level INFO \
+    || log "WARNUNG: Internxt-Sync fehlgeschlagen – primäres Backup (1blu) ist OK"
+
+  log "--- Internxt Sync abgeschlossen ---"
 }
