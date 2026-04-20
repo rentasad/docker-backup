@@ -55,6 +55,8 @@ load_configuration() {
     KEEP_DAILY="${KEEP_DAILY:-7}"
     KEEP_WEEKLY="${KEEP_WEEKLY:-4}"
     KEEP_MONTHLY="${KEEP_MONTHLY:-6}"
+    # Wie viele lokale Snapshot-Ordner in BACKUP_ROOT aufbewahrt werden sollen (standard: 1)
+    KEEP_LOCAL_BACKUPS="${KEEP_LOCAL_BACKUPS:-1}"
 
     require_config_var "BACKUP_ROOT" || return 1
     require_config_var "DOCKER_DIR" || return 1

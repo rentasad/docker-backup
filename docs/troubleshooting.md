@@ -44,4 +44,21 @@ systemctl list-timers
 
 Reload configuration:
 
-systemctl daemon-reload systemctl enable --now docker-backup.timer
+systemctl daemon-reload
+systemctl enable --now docker-backup.timer
+
+## MySQL Backup - Access Denied
+
+Error: `mysqldump: Got error: 1045: Access denied for user 'backup'@'localhost'`
+
+Fix:
+Der MySQL-Benutzer `backup` muss in der betroffenen MySQL-Instanz angelegt sein und die notwendigen Berechtigungen (`SELECT`, `SHOW VIEW`, `TRIGGER`, `LOCK TABLES`) haben.
+
+Befehl zum Anlegen des Benutzers (in der MySQL-Instanz):
+```sql
+CREATE USER 'backup'@'%' IDENTIFIED BY 'dein_passwort';
+GRANT SELECT, SHOW VIEW, TRIGGER, LOCK TABLES ON *.* TO 'backup'@'%';
+FLUSH PRIVILEGES;
+```
+
+Stelle sicher, dass in der `backup.conf` oder `.env` das korrekte Passwort hinterlegt ist.

@@ -27,6 +27,26 @@ backup_vaultwarden() {
     fi
 }
 
+# Ermittelt den freien Speicherplatz am angegebenen Pfad
+get_free_space_local() {
+    local path="$1"
+    df -h "$path" | awk 'NR==2 {print $4}'
+}
+
+# Ermittelt den freien Speicherplatz auf dem Rclone-Remote
+get_free_space_rclone() {
+    local remote="$1"
+    # Extrahiere den Remote-Namen aus restic-Stil "rclone:remote:path"
+    local rclone_remote
+    rclone_remote=$(echo "$remote" | sed 's/^rclone://;s/:.*$//')
+
+    if [ -n "$rclone_remote" ]; then
+        rclone about "${rclone_remote}:" --json 2>/dev/null | grep -o '"free":[0-9]*' | grep -o '[0-9]*' | awk '{ sum=$1 ; hum[1024**4]="TB";hum[1024**3]="GB";hum[1024**2]="MB";hum[1024]="KB"; for (x=1024**4; x>=1024; x/=1024){ if (sum>=x) { printf "%.2f %s\n",sum/x,hum[x]; break } } if (sum<1024) print sum " B" }' || echo "unbekannt"
+    else
+        echo "unbekannt"
+    fi
+}
+
 # Erstellt einen MySQL-Dump für einen bestimmten Container.
 # Parameter:
 #   $1: Container-Name
@@ -54,7 +74,7 @@ do_mysql_dump() {
         if docker exec "$container" \
             mysqldump \
             -u "$user" \
-            -p"$actual_pass" \
+            -p"$pass" \
             --port="$port" \
             --all-databases \
             --single-transaction \
@@ -95,13 +115,12 @@ backup_mysql_dump() {
         local pass="${c_pass:-$MYSQL_DEFAULT_PASSWORD}"
         local port="${c_port:-3306}"
         
-        if [ -z "$container" ]; then
+        if [ -n "$container" ]; then
+            local target="$TARGET_DIR/mysql/${container}.sql.gz"
+            do_mysql_dump "$container" "$user" "$pass" "$port" "$target" || true
+        else
             log "WARNUNG: Ungueltiger MySQL-Eintrag (Container-Name fehlt) - ueberspringe."
-            continue
         fi
-
-        local target="$TARGET_DIR/mysql/${container}.sql.gz"
-        do_mysql_dump "$container" "$user" "$pass" "$port" "$target" || true
     done
 }
 
@@ -147,6 +166,41 @@ backup_prune_restic() {
     restic -r "$RESTIC_REPOSITORY" \
         "${RESTIC_AUTH_ARGS[@]}" \
         forget --keep-daily "$KEEP_DAILY" --keep-weekly "$KEEP_WEEKLY" --keep-monthly "$KEEP_MONTHLY" --prune
+}
+
+# Bereinigt alte lokale Backup-Ordner in BACKUP_ROOT.
+# Behaelt die Anzahl der Ordner gemäss KEEP_LOCAL_BACKUPS.
+backup_cleanup_local() {
+    log "--- Lokales Aufraeumen ($BACKUP_ROOT) ---"
+
+    # Sicherstellen, dass BACKUP_ROOT existiert
+    if [ ! -d "$BACKUP_ROOT" ]; then
+        log "WARNUNG: BACKUP_ROOT ($BACKUP_ROOT) existiert nicht. Ueberspringe lokale Bereinigung."
+        return 0
+    fi
+
+    # Finde alle Verzeichnisse im Format YYYY-MM-DD_HH-MM
+    # Sortiere sie (älteste zuerst) und behalte nur die letzten N
+    local dirs
+    dirs=$(find "$BACKUP_ROOT" -maxdepth 1 -type d -regextype posix-extended -regex ".*/[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}$" | sort)
+
+    local count
+    count=$(echo "$dirs" | grep -c "^" || echo 0)
+
+    if [ "$count" -le "$KEEP_LOCAL_BACKUPS" ]; then
+        log "Keine alten lokalen Backups zum Loeschen (Vorhanden: $count, Behalten: $KEEP_LOCAL_BACKUPS)."
+        return 0
+    fi
+
+    local to_delete_count=$((count - KEEP_LOCAL_BACKUPS))
+    log "Loesche $to_delete_count alte lokale Backups..."
+
+    echo "$dirs" | head -n "$to_delete_count" | while read -r dir; do
+        if [ -d "$dir" ]; then
+            log "Entferne altes lokales Backup: $dir"
+            rm -rf "$dir"
+        fi
+    done
 }
 
 backup_sync_to_internxt() {
