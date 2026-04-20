@@ -41,6 +41,12 @@ do_mysql_dump() {
     local port="${4:-3306}"
     local target_file="$5"
 
+    # Wenn 'pass' der Name einer gesetzten Variable ist, nutze deren Wert (Indirektion)
+    local actual_pass="$pass"
+    if [[ -n "${!pass:-}" ]]; then
+        actual_pass="${!pass}"
+    fi
+
     log "Sichere Instanz: $container (Port: $port) nach $target_file..."
 
     if docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
@@ -48,7 +54,7 @@ do_mysql_dump() {
         if docker exec "$container" \
             mysqldump \
             -u "$user" \
-            -p"$pass" \
+            -p"$actual_pass" \
             --port="$port" \
             --all-databases \
             --single-transaction \
@@ -142,3 +148,4 @@ backup_prune_restic() {
         "${RESTIC_AUTH_ARGS[@]}" \
         forget --keep-daily "$KEEP_DAILY" --keep-weekly "$KEEP_WEEKLY" --keep-monthly "$KEEP_MONTHLY" --prune
 }
+
