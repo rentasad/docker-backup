@@ -15,7 +15,7 @@ rclone config
 ```
 
 1. Wähle `n` für "New remote".
-2. Gib einen Namen ein (z. B. `1blu` oder `hetzner`).
+2. Gib einen Namen ein (z. B. `1blu` oder `internxt-webdav`).
 3. Wähle den Typ des Speichers aus der Liste (z. B. `webdav` oder `s3`).
 4. Folge den spezifischen Anweisungen für deinen Anbieter.
 
@@ -25,11 +25,11 @@ Du kannst die Konfigurationsdatei auch direkt bearbeiten oder erstellen. Rclone 
 - Es ist **kein Neustart** eines Dienstes erforderlich.
 - Rclone liest die Konfigurationsdatei bei **jedem Befehlsaufruf** neu ein.
 
-Der Standardpfad für die Konfiguration ist `~/.config/rclone/rclone.config`.
+Der Standardpfad für die Konfiguration ist `~/.config/rclone/rclone.conf`.
 
-Hier sind zwei Beispiele für häufig genutzte Anbieter in diesem Projekt:
+Hier sind Beispiele für die in diesem Projekt genutzten Anbieter:
 
-#### Beispiel: 1blu (WebDAV)
+#### Beispiel: 1blu (WebDAV) – Primärer Backup-Speicher
 ```ini
 [1blu]
 type = webdav
@@ -38,6 +38,18 @@ vendor = other
 user = [dein_benutzername]
 pass = [dein_verschlüsseltes_passwort]
 ```
+
+#### Beispiel: Internxt (WebDAV) – Sekundärer Sync-Speicher
+```ini
+[internxt-webdav]
+type = webdav
+url = https://webdav.internxt.com
+vendor = other
+user = [deine_internxt_email]
+pass = [dein_verschlüsseltes_passwort]
+```
+
+> Der Name `internxt-webdav` muss mit dem Wert von `INTERNXT_RCLONE_REMOTE` in deiner `backup.conf` übereinstimmen.
 
 #### Beispiel: Hetzner Object Storage (S3)
 ```ini
@@ -50,51 +62,47 @@ region = fsn1
 endpoint = fsn1.your-objectstorage.com
 ```
 
-> **Hinweis zur Sicherheit:** Passwörter in der `rclone.config` sind standardmäßig mit einem einfachen Verfahren verschleiert. Wenn du sie manuell einträgst, kannst du `rclone obscure "dein_passwort"` nutzen, um den verschleierten String für das Feld `pass` zu generieren.
+> **Hinweis zur Sicherheit:** Passwörter in der `rclone.conf` sind standardmäßig mit einem einfachen Verfahren verschleiert. Wenn du sie manuell einträgst, kannst du `rclone obscure "dein_passwort"` nutzen, um den verschleierten String für das Feld `pass` zu generieren.
 
 ## 2. Speicherort der Konfiguration
 
-Stelle sicher, dass die Datei die richtigen Berechtigungen hat, da sie Zugangsdaten enthält:
+Stelle sicher, dass der Pfad zur Konfigurationsdatei in der `.env` korrekt gesetzt ist:
+
+```env
+RCLONE_CONFIG=/root/.config/rclone/rclone.conf
+```
+
+Und dass die Datei die richtigen Berechtigungen hat:
 
 ```bash
 mkdir -p ~/.config/rclone
 chmod 700 ~/.config/rclone
-chmod 600 ~/.config/rclone/rclone.config
+chmod 600 ~/.config/rclone/rclone.conf
 ```
 
 ## 3. Funktionstests
 
-Nachdem die Konfiguration abgeschlossen ist, solltest du prüfen, ob Rclone deine Remotes erkennt und die Verbindung testen.
+Nachdem die Konfiguration abgeschlossen ist, solltest du prüfen, ob Rclone deine Remotes erkennt und die Verbindung funktioniert.
 
 ### Remotes auflisten
-Prüfe, ob deine konfigurierten Remotes (z. B. `1blu`, `hetzner`) in der Liste erscheinen:
 ```bash
 rclone listremotes
 ```
+Erwartete Ausgabe (Beispiel): `1blu:` und `internxt-webdav:`
 
 ### Verbindung prüfen
 Listet alle Verzeichnisse im Root des Remotes auf:
 ```bash
-rclone lsd [remote_name]:
+rclone lsd 1blu:
+rclone lsd internxt-webdav:
 ```
 
 ### Schreibtest
-Erstelle eine Testdatei und lade sie hoch:
 ```bash
 echo "test" > rclone_test.txt
-rclone copy rclone_test.txt [remote_name]:
-```
-
-### Verifizierung
-Prüfe, ob die Datei auf dem Remote existiert:
-```bash
-rclone ls [remote_name]:rclone_test.txt
-```
-
-### Aufräumen
-Lösche die Testdatei wieder:
-```bash
-rclone delete [remote_name]:rclone_test.txt
+rclone copy rclone_test.txt 1blu:
+rclone ls 1blu:rclone_test.txt
+rclone delete 1blu:rclone_test.txt
 rm rclone_test.txt
 ```
 

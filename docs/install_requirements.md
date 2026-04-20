@@ -45,10 +45,10 @@ newgrp docker
 
 ## 4. Verzeichnisinfrastruktur erstellen
 
-Wir legen die benötigten Verzeichnisse unter `/srv/docker` an und setzen die passenden Schreibrechte für den aktuellen Benutzer.
+Wir legen die benötigten Verzeichnisse unter `/srv/docker` und `/opt/docker-backup` an.
 
 ```bash
-# Verzeichnisse erstellen
+# Docker-Verzeichnisse erstellen
 sudo mkdir -p /srv/docker/infrastructure
 sudo mkdir -p /srv/docker/apps
 
@@ -57,6 +57,10 @@ sudo chown -R $USER:$USER /srv/docker
 
 # Schreibrechte sicherstellen
 chmod -R 755 /srv/docker
+
+# Backup-Projektverzeichnis
+sudo mkdir -p /opt/docker-backup
+sudo chown -R $USER:$USER /opt/docker-backup
 ```
 
 ## 5. Restic und Rclone installieren
@@ -76,6 +80,23 @@ docker --version
 docker compose version
 restic version
 rclone version
+```
+
+## 6. Backup-Projekt einrichten
+
+```bash
+# Repository klonen (oder Dateien manuell kopieren)
+cd /opt/docker-backup
+
+# Konfigurationsdateien anlegen
+cp .env.example .env
+cp backup.conf.example backup.conf
+
+# .env anpassen (Passwörter, Repository-Pfad, Gotify-URL)
+nano .env
+
+# backup.conf anpassen (Pfade, MySQL-Instanzen, Nextcloud-Variablen)
+nano backup.conf
 ```
 
 ## Nächste Schritte

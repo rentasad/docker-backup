@@ -32,8 +32,11 @@ Automatisiertes Backup für einen Linux Docker-Host mit lokalen Snapshots, Resti
 
 - Backup von Docker Compose Stacks (inklusive Volumes und Konfiguration)
 - Unterstützung für Vaultwarden-Backups
-- MySQL-Dump (`mysqldump` + `gzip`)
+- Nextcloud-Backup mit automatischer Maintenance-Mode-Steuerung
+- MySQL / MariaDB Dump je Instanz (konfigurierbare Liste)
 - Deduplizierte Offsite-Backups mit Restic
+- Optionale Sekundär-Synchronisierung zu Internxt via Rclone
+- Lokale Snapshot-Aufbewahrung (konfigurierbare Anzahl)
 - Gotify-Benachrichtigungen für Start/Erfolg/Fehler/Überspringen
 - Ausführungsprotokolle (Info + Fehler) werden in `./log/` geschrieben
 - Tägliche Ausführung via `systemd` Timer
@@ -45,8 +48,9 @@ Automatisiertes Backup für einen Linux Docker-Host mit lokalen Snapshots, Resti
 Docker-Daten
   -> Lokaler Snapshot (/srv/backups/<zeitstempel>)
   -> Restic-Backup
-  -> Rclone-Remote (rclone:1blu:restic-repo)
-  -> 1blu Speicher
+  -> Rclone-Remote (z. B. rclone:1blu:restic-repo)
+  -> Primärer Speicher (z. B. 1blu)
+  -> [Optional] Sekundär-Sync zu Internxt
 ```
 
 ## Voraussetzungen
@@ -69,14 +73,17 @@ apt update
 apt install -y docker.io docker-compose-plugin restic rclone curl util-linux pv
 ```
 
+Für eine Schritt-für-Schritt-Einrichtung auf einem neuen System siehe die [Installationsanleitung](docs/install_requirements.md).
+
 ## Verzeichnisstruktur
 
 ```text
-/srv/docker                      # Docker-Umgebung
-/srv/backups                     # Ziel für lokale Snapshots
-/srv/restic/docker-backup.sh     # Backup-Skript
-/srv/restic/.env                 # Laufzeit-Konfiguration (inkl. Restic-Passwort)
-/srv/restic/log/                 # Protokolle der Backup-Läufe
+/srv/docker                        # Docker-Umgebung
+/srv/backups                       # Ziel für lokale Snapshots
+/opt/docker-backup/                # Projekt-Wurzelverzeichnis
+/opt/docker-backup/.env            # Laufzeit-Konfiguration (Secrets, Restic-Passwort)
+/opt/docker-backup/backup.conf     # Backup-Konfiguration (Pfade, Instanzen, Aufbewahrung)
+/opt/docker-backup/log/            # Protokolle der Backup-Läufe
 ```
 
 Beispiel-Snapshot:
@@ -89,29 +96,39 @@ Beispiel-Snapshot:
 
 ### 1) `.env` erstellen
 
-Pfad: `/srv/restic/.env`
+Pfad: `/opt/docker-backup/.env`
 
 Beispiel (siehe `.env.example` in diesem Repository):
 
 ```env
-# GOTIFY-Konfiguration
+# MySQL-Zugangsdaten (werden als Standard für MYSQL_INSTANCES und Nextcloud genutzt)
+MYSQL_USER=root
+MYSQL_PASSWORD=CHANGEME
+
+# Instanz-spezifische Passwörter, referenziert aus backup.conf
+PROD_DB_PASSWORD=CHANGEME
+NEXTCLOUD_DB_PASSWORD=CHANGEME
+
+# Gotify-Benachrichtigungen
 GOTIFY_URL=https://gotify.example.com/message
 GOTIFY_TOKEN=ÄNDERMICH
 GOTIFY_PRIORITY_SUCCESS=4
 GOTIFY_PRIORITY_ERROR=8
 
-# Restic/Rclone-Konfiguration
-RCLONE_CONFIG=/home/user/.config/rclone/rclone.conf
+# Restic / Rclone
+RCLONE_CONFIG=/root/.config/rclone/rclone.conf
 RESTIC_REPOSITORY=rclone:1blu:restic-repo
-RESTIC_PASSWORD=ÄNDERMICH
+RESTIC_PASSWORD='DeinResticPasswort'
 ```
+
+> Passwörter mit Sonderzeichen (z. B. `*`, `$`, `!`) sollten in einfache Anführungszeichen gesetzt werden.
 
 ### 2) `backup.conf` erstellen
 
-Pfad: `/srv/restic/backup.conf`
+Pfad: `/opt/docker-backup/backup.conf`
 
-Vorlage: `backup.conf.example` (kopieren und für Ihren Host anpassen)
-Optional: `LOG_DIR` setzen (sonst Standard `<projekt-root>/log`)
+Vorlage: `backup.conf.example` (kopieren und für den eigenen Host anpassen).
+Optional: `LOG_DIR` setzen (sonst Standard `<projekt-root>/log`).
 
 Beispiel:
 
@@ -119,26 +136,43 @@ Beispiel:
 BACKUP_ROOT=/srv/backups
 DOCKER_DIR=/srv/docker
 
-# MySQL Backup-Konfiguration
-# Format: "CONTAINER_NAME:USER:PASSWORT:PORT"
-MYSQL_INSTANCES=(
-  "mysql-prod:backup:geheim123"
-  "mysql-dev:root:rootpass:3306"
-)
-
+# Aufbewahrung
 RESTIC_TAG=docker-backup
 KEEP_DAILY=7
 KEEP_WEEKLY=4
 KEEP_MONTHLY=6
+# Anzahl lokaler Snapshot-Verzeichnisse (0 = sofort nach Restic-Backup löschen)
+KEEP_LOCAL_BACKUPS=1
+
+# MySQL-Instanzen für Dump
+# Format: "CONTAINER_NAME:USER:PASSWORT_ODER_VARIABLE:PORT"
+# USER, PASSWORT, PORT sind optional und fallen auf MYSQL_DEFAULT_* / 3306 zurück
+MYSQL_INSTANCES=(
+  "mysql-prod:backup:PROD_DB_PASSWORD:3306"  # Variablenreferenz aus .env
+  "mysql-dev:root:rootpass"                  # Klartext-Passwort
+  "mysql-legacy"                             # Nutzt MYSQL_DEFAULT_*-Werte
+)
 
 EXCLUDED_STACK_DIRS=(
   "/srv/docker/infrastructure/gotify"
-  "/srv/docker/infrastructure/ntpserver"
 )
-
 EXCLUDED_CONTAINER_NAMES=(
   "gotify"
 )
+
+# Internxt Sekundär-Sync (optional)
+# Name des rclone-Remotes für Internxt (wie in rclone config konfiguriert)
+INTERNXT_RCLONE_REMOTE="internxt-webdav"
+
+# Nextcloud-spezifisches Backup (optional)
+NEXTCLOUD_APP_CONTAINER="nextcloud-app"
+NEXTCLOUD_DB_CONTAINER="nextcloud-db"
+NEXTCLOUD_DB_USER="nextcloud"
+NEXTCLOUD_DB_PASSWORD="${NEXTCLOUD_DB_PASSWORD}"  # Referenz auf .env
+NEXTCLOUD_DB_NAME="nextcloud"
+NEXTCLOUD_DATA_DIR="/srv/docker/nextcloud/data/nextcloud"
+# Optional: Dump-Befehl überschreiben (ohne Angabe: automatische Erkennung mariadb-dump vs mysqldump)
+# NEXTCLOUD_DB_DUMP_CMD=mariadb-dump
 ```
 
 ### 3) Restic-Repository initialisieren
@@ -161,14 +195,17 @@ Das Skript [`scripts/docker-backup.sh`](scripts/docker-backup.sh) führt folgend
 
 1. Erkennung aktiver Docker Compose Stacks
 2. Ausführung des Vaultwarden-Backups
-3. Erstellung des MySQL-Dumps
-4. Stoppen aktiver Stacks (außer ausgeschlossene)
-5. Kopieren der Docker-Verzeichnisse in den lokalen Snapshot
-6. Ausführung des Restic-Backups zum Remote-Repository
-7. Anwendung der Aufbewahrungsrichtlinie und Löschen alter Snapshots
-8. Neustart der zuvor aktiven Stacks
-9. Senden der Ergebnisbenachrichtigung via Gotify
-10. Schreiben des vollständigen Protokolls (stdout/stderr) nach `LOG_DIR/docker-backup-<zeitstempel>.log`
+3. Erstellung der MySQL-Dumps (alle konfigurierten `MYSQL_INSTANCES`)
+4. Nextcloud-Backup (Maintenance Mode an → DB-Dump → Daten-Sync → Maintenance Mode aus)
+5. Stoppen aktiver Stacks (außer ausgeschlossene)
+6. Kopieren der Docker-Verzeichnisse in den lokalen Snapshot
+7. Ausführung des Restic-Backups zum Remote-Repository
+8. Anwendung der Aufbewahrungsrichtlinie und Löschen alter Snapshots
+9. [Optional] Sekundär-Sync des Restic-Repositories zu Internxt
+10. Bereinigung alter lokaler Snapshots (behält `KEEP_LOCAL_BACKUPS` Verzeichnisse)
+11. Neustart der zuvor aktiven Stacks
+12. Senden der Ergebnisbenachrichtigung via Gotify
+13. Schreiben des vollständigen Protokolls (stdout/stderr) nach `LOG_DIR/docker-backup-<zeitstempel>.log`
 
 ## Ausgeschlossene Stacks
 
@@ -177,7 +214,7 @@ Infrastruktur-Stacks können von den Stop/Start-Operationen ausgeschlossen werde
 Wichtig: Diese Ausschlüsse betreffen nur die Dienst-Orchestrierung während des Backups (`docker compose down/up`).
 Daten werden dadurch nicht vom Backup ausgeschlossen. Das Skript kopiert weiterhin das gesamte `DOCKER_DIR`.
 
-Ausschlüsse in `/srv/restic/backup.conf` festlegen:
+Ausschlüsse in `backup.conf` festlegen:
 
 ```bash
 EXCLUDED_STACK_DIRS=(
@@ -220,7 +257,7 @@ journalctl -u docker-backup.service -f
 
 ## Wiederherstellung (Restore)
 
-Detaillierte Anweisungen zur Wiederherstellung finden Sie im Verzeichnis [`restore/`](restore/README.md).
+Detaillierte Anweisungen zur Wiederherstellung finden sich im Verzeichnis [`restore/`](restore/README.md) und im [Wiederherstellungs-Leitfaden](docs/restore.md).
 
 Kurzübersicht:
 
@@ -265,7 +302,7 @@ Um ein neues Release zu erstellen:
 
 ## Zusätzliche Dokumentation
 
-- [Installation der Voraussetzungen](docs/install_requirements.md)
+- [Installationsanleitung](docs/install_requirements.md)
 - [Rclone-Konfiguration](docs/rclone_setup.md)
 - [Architektur](docs/architecture.md)
 - [Wiederherstellungs-Leitfaden](docs/restore.md)
@@ -275,5 +312,6 @@ Um ein neues Release zu erstellen:
 
 - Status: Produktion (Production)
 - Tägliches automatisiertes Backup um: `05:30`
-- Speicherziel: `1blu` via `rclone`
+- Primärer Speicher: `1blu` via `rclone`
+- Sekundärer Speicher: `Internxt` via `rclone` (optionaler Sync)
 - Benachrichtigungen: `Gotify`
