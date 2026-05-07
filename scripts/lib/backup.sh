@@ -153,6 +153,10 @@ backup_copy_docker_dirs() {
 # Fuehrt das Restic-Backup fuer das gesamte Zielverzeichnis aus.
 backup_run_restic() {
     log "--- Restic Backup ---"
+    
+    # Entferne evtl. vorhandene verwaiste Locks
+    restic -r "$RESTIC_REPOSITORY" "${RESTIC_AUTH_ARGS[@]}" unlock || log "WARNUNG: Restic-Unlock fehlgeschlagen."
+
     restic -r "$RESTIC_REPOSITORY" \
         "${RESTIC_AUTH_ARGS[@]}" \
         backup "$TARGET_DIR" \
@@ -163,6 +167,10 @@ backup_run_restic() {
 # Bereinigt alte Snapshots im Restic-Repository basierend auf der Retention-Policy.
 backup_prune_restic() {
     log "--- Restic Aufraeumen ---"
+
+    # Entferne evtl. vorhandene verwaiste Locks (besonders wichtig vor --prune)
+    restic -r "$RESTIC_REPOSITORY" "${RESTIC_AUTH_ARGS[@]}" unlock || log "WARNUNG: Restic-Unlock fehlgeschlagen."
+
     restic -r "$RESTIC_REPOSITORY" \
         "${RESTIC_AUTH_ARGS[@]}" \
         forget --keep-daily "$KEEP_DAILY" --keep-weekly "$KEEP_WEEKLY" --keep-monthly "$KEEP_MONTHLY" --prune
