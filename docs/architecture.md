@@ -11,6 +11,7 @@ Docker Services
   -> Vaultwarden backup (pre-stop)
   -> MySQL / MariaDB dumps (pre-stop)
   -> Nextcloud backup (maintenance mode, DB dump, data sync)
+  -> Detect and save active stacks to `.active_stacks`
   -> Stop non-excluded stacks
   -> Local Snapshot (/srv/backups/<timestamp>)
   -> Restic Backup (deduplicated, encrypted)
@@ -50,7 +51,7 @@ The number of retained local snapshots is controlled by `KEEP_LOCAL_BACKUPS` in 
 Main script: `/opt/docker-backup/scripts/docker-backup.sh`
 
 Responsibilities:
-1. Detect active Docker stacks
+1. Detect active Docker stacks and save to `ACTIVE_STACKS_STATE_FILE`
 2. Run Vaultwarden backup
 3. Create MySQL / MariaDB dumps (all `MYSQL_INSTANCES`)
 4. Run Nextcloud backup (maintenance mode on/off, DB dump, rsync data)

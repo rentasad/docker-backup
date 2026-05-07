@@ -81,4 +81,7 @@ load_configuration() {
 
     export RCLONE_CONFIG="${RCLONE_CONFIG:-/home/matthi/.config/rclone/rclone.conf}"
     export RESTIC_REPOSITORY="${RESTIC_REPOSITORY:-rclone:1blu:restic-repo}"
+    
+    # Datei für den Status der aktiven Stacks
+    ACTIVE_STACKS_STATE_FILE="${ACTIVE_STACKS_STATE_FILE:-$ROOT_DIR/.active_stacks}"
 }

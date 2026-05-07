@@ -34,7 +34,6 @@ source "$LIB_DIR/backup.sh"
 source "$LIB_DIR/nextcloud.sh"
 
 LOCK_FILE="/var/lock/docker-backup.lock"
-ACTIVE_STACK_FILE=""
 BACKUP_OK=0
 START_TS="$(date +%s)"
 START_TIME="$(date '+%F %T')"
@@ -48,13 +47,12 @@ cleanup() {
     end_time="$(date '+%F %T')"
     duration="$(format_duration $((end_ts - START_TS)))"
 
-    docker_restart_stacks_from_file "$ACTIVE_STACK_FILE"
-
-    if [ -n "${ACTIVE_STACK_FILE:-}" ] && [ -f "$ACTIVE_STACK_FILE" ]; then
-        rm -f "$ACTIVE_STACK_FILE"
-    fi
+    docker_restart_stacks_from_file "$ACTIVE_STACKS_STATE_FILE"
 
     if [ "$exit_code" -eq 0 ] && [ "$BACKUP_OK" -eq 1 ]; then
+        if [ -f "$ACTIVE_STACKS_STATE_FILE" ]; then
+            rm -f "$ACTIVE_STACKS_STATE_FILE"
+        fi
         backup_size="$(du -sh "$TARGET_DIR" 2>/dev/null | awk '{print $1}')" || backup_size="unbekannt"
         free_local="$(get_free_space_local "$BACKUP_ROOT")" || free_local="unbekannt"
         free_remote="$(get_free_space_rclone "$RESTIC_REPOSITORY")" || free_remote="unbekannt"
@@ -114,22 +112,21 @@ Ziel: $TARGET_DIR" \
     "${GOTIFY_PRIORITY_SUCCESS:-4}"
 
 mkdir -p "$TARGET_DIR"
-ACTIVE_STACK_FILE="$(mktemp /tmp/active_stacks.XXXXXX)"
 
 log "=== Backup gestartet: $DATE (Version: $APP_VERSION) ==="
 
 log "--- Erfasse aktive Docker Compose Projekte ---"
 ACTIVE_STACK_DIRS="$(docker_detect_active_stack_dirs)"
-printf '%s\n' "$ACTIVE_STACK_DIRS" > "$ACTIVE_STACK_FILE"
+printf '%s\n' "$ACTIVE_STACK_DIRS" > "$ACTIVE_STACKS_STATE_FILE"
 
 log "Aktive Stacks:"
-cat "$ACTIVE_STACK_FILE"
+cat "$ACTIVE_STACKS_STATE_FILE"
 echo
 
 backup_vaultwarden
 backup_mysql_dump
 backup_nextcloud
-docker_stop_stacks_from_file "$ACTIVE_STACK_FILE"
+docker_stop_stacks_from_file "$ACTIVE_STACKS_STATE_FILE"
 backup_copy_docker_dirs
 backup_run_restic
 backup_sync_to_internxt
